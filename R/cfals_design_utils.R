@@ -47,6 +47,44 @@ penalty_matrix.HRF <- function(hrf) {
   diag(nbasis(hrf))
 }
 
+#' Convolve a timeseries with a single HRF basis function
+#'
+#' Utility helper that extracts one basis function from an `HRF` object and
+#' performs discrete convolution with a raw timeseries.  The result has the
+#' same length as the input series and is truncated to the sampling frame.
+#'
+#' @param ts Numeric vector of raw onset values.
+#' @param hrf_basis An object of class `HRF` providing the basis set.
+#' @param basis_index Integer index of the basis function to use.
+#' @param sframe A `sampling_frame` object describing the temporal grid.
+#' @return Numeric vector of convolved values.
+#' @keywords internal
+convolve_timeseries_with_single_basis <- function(ts, hrf_basis,
+                                                  basis_index = 1, sframe) {
+  if (!is.numeric(ts)) {
+    stop("'ts' must be numeric")
+  }
+  if (!inherits(hrf_basis, "HRF")) {
+    stop("'hrf_basis' must be an object of class 'HRF'")
+  }
+  nb <- fmrireg::nbasis(hrf_basis)
+  if (basis_index < 1 || basis_index > nb) {
+    stop("'basis_index' out of range")
+  }
+
+  grid <- if (inherits(sframe, "sampling_frame")) {
+    seq(0, attr(hrf_basis, "span"), by = sframe$TR[1])
+  } else {
+    as.numeric(sframe)
+  }
+  vals <- fmrireg::evaluate(hrf_basis, grid)
+  if (is.vector(vals)) vals <- matrix(vals, ncol = 1L)
+  phi_j <- vals[, basis_index]
+
+  conv_full <- stats::convolve(ts, rev(phi_j), type = "open")
+  conv_full[seq_along(ts)]
+}
+
 #' Project design and data matrices to the null space of confounds
 #'
 #' Projects both the data matrix `Y` and each design matrix in

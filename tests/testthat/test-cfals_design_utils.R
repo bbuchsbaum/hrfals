@@ -12,6 +12,16 @@ test_that("penalty_matrix defaults to identity", {
   expect_equal(Rm, diag(nbasis(HRF_SPMG1)))
 })
 
+test_that("convolve_timeseries_with_single_basis behaves like impulse response", {
+  sf <- sampling_frame(10, TR = 1)
+  raw_ts <- c(1, rep(0, 9))
+  conv <- convolve_timeseries_with_single_basis(raw_ts, HRF_SPMG3, 2, sf)
+  grid <- seq(0, attr(HRF_SPMG3, "span"), by = sf$TR[1])
+  phi <- evaluate(HRF_SPMG3, grid)
+  if (is.vector(phi)) phi <- matrix(phi, ncol = 1L)
+  expect_equal(conv, phi[seq_along(raw_ts), 2])
+})
+
 test_that("project_confounds projects via QR", {
   X <- matrix(rnorm(20), 5, 4)
   Y <- matrix(rnorm(10), 5, 2)
