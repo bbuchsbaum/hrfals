@@ -14,7 +14,7 @@
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param penalty_R_mat_type How to construct the penalty matrix. One of
-#'   "identity", "basis", or "custom". If "custom", supply `R_mat`.
+#'   "identity", "basis_default", or "custom". If "custom", supply `R_mat`.
 #' @param R_mat Optional custom penalty matrix for the h update.
 #' @param fullXtX Logical; passed to the estimation engine.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
@@ -32,7 +32,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                lambda_init = 1,
                                lambda_b = 10,
                                lambda_h = 1,
-                               penalty_R_mat_type = c("identity", "basis", "custom"),
+                               penalty_R_mat_type = c("identity", "basis_default", "custom"),
                                R_mat = NULL,
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
@@ -61,7 +61,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
 
   R_eff <- switch(penalty_R_mat_type,
                   identity = diag(d),
-                  basis = penalty_matrix(hrf_basis_for_cfals),
+                  basis_default = penalty_matrix(hrf_basis_for_cfals),
                   custom = {
                     if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
                     R_mat
