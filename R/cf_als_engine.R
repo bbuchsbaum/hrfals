@@ -75,7 +75,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   XtX_list <- lapply(X_list_proj, crossprod)
 
 
-  size_est <- k * d * v * 8
+  size_est <- as.numeric(k) * d * v * 8
   if (precompute_xty_flag && size_est > 2e9) {
     message("Estimated size of XtY_list (", size_est,
             " bytes) is large; consider `precompute_xty_flag = FALSE`")
