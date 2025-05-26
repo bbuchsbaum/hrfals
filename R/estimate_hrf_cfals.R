@@ -112,6 +112,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              phi_recon_matrix = Phi,
              design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX),
              residuals = resids,
+             bad_row_idx = prep$bad_row_idx,
              recon_hrf = recon_hrf,
              gof = r2)
 }
