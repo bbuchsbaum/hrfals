@@ -127,7 +127,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      R_mat_eff
+      Matrix::forceSymmetric(R_mat_eff)
     }
 
     for (vx in seq_len(v)) {

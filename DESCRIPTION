@@ -7,6 +7,7 @@ License: GPL-3
 Encoding: UTF-8
 RoxygenNote: 7.3.1 
 Imports:
-    fmrireg (>= 0.0.0.9000)
+    fmrireg (>= 0.0.0.9000),
+    Matrix
 Remotes:
     bbuchsbaum/fmrireg
