@@ -14,6 +14,8 @@
 #' @param svd_backend backend for SVD in the initialization step
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
+#' @param R_mat optional penalty matrix for the ridge step in the
+#'   initialisation. Defaults to the identity matrix.
 #' @return list with matrices `h` (d x v), `beta` (k x v) and the
 #'         initial estimates `h_ls_svd`, `beta_ls_svd`
 #' @keywords internal
@@ -26,7 +28,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                h_ref_shape_norm = NULL,
                                svd_backend = c("base_R"),
                                epsilon_svd = 1e-8,
-                               epsilon_scale = 1e-8) {
+                               epsilon_scale = 1e-8,
+                               R_mat = NULL) {
 
   if (lambda_init < 0 || lambda_b < 0 || lambda_h < 0)
     stop("Lambdas must be non-negative")
@@ -34,6 +37,13 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
   d <- ncol(X_list_proj[[1]])
   if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
     stop("`h_ref_shape_norm` must be length d")
+  if (!is.null(R_mat)) {
+    if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
+      stop(paste("R_mat must be a", d, "x", d, "matrix"))
+    }
+  } else {
+    R_mat <- diag(d)
+  }
 
   cholSolve <- function(M, B) {
     R <- tryCatch(chol(M),
@@ -45,7 +55,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                         h_ref_shape_norm = h_ref_shape_norm,
                         svd_backend = svd_backend,
                         epsilon_svd = epsilon_svd,
-                        epsilon_scale = epsilon_scale)
+                        epsilon_scale = epsilon_scale,
+                        R_mat = R_mat)
 
   h_current <- init$h
   b_current <- init$beta

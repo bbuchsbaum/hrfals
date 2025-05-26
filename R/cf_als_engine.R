@@ -60,7 +60,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                         lambda_init = 0,
                         h_ref_shape_norm = h_ref_shape_norm,
                         epsilon_svd = epsilon_svd,
-                        epsilon_scale = epsilon_scale)
+                        epsilon_scale = epsilon_scale,
+                        R_mat = R_mat)
   h_current <- init$h
   b_current <- init$beta
 
