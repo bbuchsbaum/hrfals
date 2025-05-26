@@ -100,7 +100,10 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     XtX_full_list <- NULL
   }
 
+  iter_final <- 0
   for (iter in seq_len(max_alt)) {
+    b_prev <- b_current
+    h_prev <- h_current
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
 
@@ -160,7 +163,13 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           lhs <- lhs + b_vx[l]^2 * XtX_list[[l]]
         }
       }
-      h_current[, vx] <- cholSolve(lhs, rhs)
+    h_current[, vx] <- cholSolve(lhs, rhs)
+    }
+
+    iter_final <- iter
+    if (max(abs(b_current - b_prev)) < 1e-6 &&
+        max(abs(h_current - h_prev)) < 1e-6) {
+      break
     }
   }
 
@@ -179,7 +188,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     b_final[, zero_idx] <- 0
   }
 
-  attr(h_final, "iterations") <- max_alt
+  attr(h_final, "iterations") <- iter_final
   list(h = h_final, beta = b_final)
 }
 
