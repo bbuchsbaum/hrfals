@@ -157,6 +157,13 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       b_vx <- b_current[, vx]
       lhs <- lambda_h * h_penalty_matrix
       rhs <- numeric(d)
+
+      if (!isTRUE(precompute_xty_flag)) {
+        XtY_cache <- vector("list", k)
+        for (l in seq_len(k)) {
+          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+      }
       for (l in seq_len(k)) {
 
         XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
