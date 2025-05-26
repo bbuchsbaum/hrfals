@@ -7,8 +7,8 @@
 #' @param X_list_proj list of k design matrices (n x d each)
 #' @param Y_proj      numeric matrix of projected BOLD data (n x v)
 #' @param lambda_init ridge penalty for initial GLM solve
-#' @param Phi_recon_matrix Reconstruction matrix mapping coefficients to HRF
-#'   shape (p x d)
+#' @param Phi_recon_matrix Canonical reference HRF shape of length p for
+#'   sign alignment
 #' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
 #'   sign alignment
 #' @param svd_backend currently ignored, placeholder for future backends
@@ -25,9 +25,7 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
                           svd_backend = c("base_R"),
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8,
-                          R_mat = NULL,
-                          Phi_recon_matrix = NULL,
-                          h_ref_shape_canonical = NULL) {
+                          R_mat = NULL) {
   svd_backend <- match.arg(svd_backend)
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)

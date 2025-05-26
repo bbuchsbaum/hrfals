@@ -70,47 +70,26 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
                                 lambda_init = lambda_init,
-##<<<<<<< codex/update-design-object-and-engine-arguments
-                                h_ref_shape_norm = NULL,
-                                R_mat = R_eff,
-                                Phi_recon_matrix = Phi,
-                                h_ref_shape_canonical = prep$h_ref_shape_canonical),
-##=======
                                 Phi_recon_matrix = Phi,
                                 h_ref_shape_canonical = h_ref_shape_canonical,
                                 R_mat = R_eff),
-##>>>>>>> main
     ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
                                      fullXtX_flag = fullXtX,
-##<<<<<<< codex/update-design-object-and-engine-arguments
-                                     h_ref_shape_norm = NULL,
-                                     R_mat = R_eff,
-                                     Phi_recon_matrix = Phi,
-                                     h_ref_shape_canonical = prep$h_ref_shape_canonical),
-##=======
                                      Phi_recon_matrix = Phi,
                                      h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_eff),
-##>>>>>>> main
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
                            R_mat_eff = R_eff,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
-##<<<<<<< codex/update-design-object-and-engine-arguments
-                           h_ref_shape_norm = NULL,
-                           max_alt = max_alt,
-                           Phi_recon_matrix = Phi,
-                           h_ref_shape_canonical = prep$h_ref_shape_canonical)
-##=======
                            Phi_recon_matrix = Phi,
                            h_ref_shape_canonical = h_ref_shape_canonical,
                            max_alt = max_alt)
-##>>>>>>> main
   )
 
   rownames(fit$beta) <- prep$condition_names

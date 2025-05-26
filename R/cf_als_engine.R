@@ -13,8 +13,7 @@
 #' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
 #' @param precompute_xty_flag logical; if TRUE precompute `XtY_list` otherwise
 #'   compute per voxel on-the-fly
-#' @param Phi_recon_matrix Reconstruction matrix mapping coefficients to HRF
-#'   shape (p x d)
+#' @param Phi_recon_matrix p x d matrix for sign alignment
 #' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
 #'   sign alignment
 #' @param max_alt number of alternating updates after initialization
@@ -31,14 +30,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
-
                           Phi_recon_matrix,
                           h_ref_shape_canonical,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8,
-                          Phi_recon_matrix = NULL,
-                          h_ref_shape_canonical = NULL) {
+                          epsilon_scale = 1e-8) {
 
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
@@ -147,7 +143,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      Matrix::forceSymmetric(R_mat_eff)
+      R_mat_eff
     }
 
     for (vx in seq_len(v)) {
