@@ -49,6 +49,14 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
   expect_true(is.matrix(fit$phi_recon_matrix))
 })
 
+test_that("estimate_hrf_cfals carries bad_row_idx", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat$Y[4, 1] <- NA
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                            lambda_b = 0.1, lambda_h = 0.1)
+  expect_equal(fit$bad_row_idx, 4)
+})
+
 
 test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
@@ -58,10 +66,19 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
+##<<<<<<< codex/update-design-object-and-engine-arguments
                                h_ref_shape_norm = NULL,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+##=======
+                               R_mat = diag(prep$d_basis_dim),
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical)
+##=======
+##>>>>>>> main
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = diag(prep$d_basis_dim))
+##>>>>>>> main
   wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,

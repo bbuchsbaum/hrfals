@@ -13,7 +13,9 @@
 #' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
 #' @param precompute_xty_flag logical; if TRUE precompute `XtY_list` otherwise
 #'   compute per voxel on-the-fly
-#' @param h_ref_shape_norm optional reference HRF shape for sign alignment
+#' @param Phi_recon_matrix p x d matrix for sign alignment
+#' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
+#'   sign alignment
 #' @param max_alt number of alternating updates after initialization
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
@@ -28,19 +30,27 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
-                          h_ref_shape_norm = NULL,
+                          Phi_recon_matrix,
+                          h_ref_shape_canonical,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                           epsilon_scale = 1e-8,
                           Phi_recon_matrix = NULL,
                           h_ref_shape_canonical = NULL) {
+##=======
+                          epsilon_scale = 1e-8) {
+
+##>>>>>>> main
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
   d <- ncol(X_list_proj[[1]])
   k <- length(X_list_proj)
-  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
-    stop("`h_ref_shape_norm` must have length d")
+  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
+    stop("`Phi_recon_matrix` must be a p x d matrix")
+  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
+    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
   for (X in X_list_proj) {
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
@@ -66,7 +76,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
 
   init <- ls_svd_engine(X_list_proj, Y_proj,
                         lambda_init = 0,
-                        h_ref_shape_norm = h_ref_shape_norm,
+                        Phi_recon_matrix = Phi_recon_matrix,
+                        h_ref_shape_canonical = h_ref_shape_canonical,
                         epsilon_svd = epsilon_svd,
                         epsilon_scale = epsilon_scale)
   h_current <- init$h
@@ -138,7 +149,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      Matrix::forceSymmetric(R_mat_eff)
+      R_mat_eff
     }
 
     for (vx in seq_len(v)) {
@@ -171,6 +182,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
   }
 
+##<<<<<<< codex/update-unit-and-wrapper-tests
   if (!is.null(Phi_recon_matrix) && !is.null(h_ref_shape_canonical)) {
     recon_hrf <- Phi_recon_matrix %*% h_current
     scl <- apply(abs(recon_hrf), 2, max)
@@ -184,6 +196,13 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       flip[align < 0 & scl > epsilon_scale] <- -1.0
     }
   }
+##=======
+  H_shapes_iter <- Phi_recon_matrix %*% h_current
+  scl <- apply(abs(H_shapes_iter), 2, max)
+  flip <- rep(1.0, v)
+  align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
+  flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
+##>>>>>>> main
   eff_scl <- pmax(scl, epsilon_scale)
   h_final <- sweep(h_current, 2, flip / eff_scl, "*")
   b_final <- sweep(b_current, 2, flip * eff_scl, "*")

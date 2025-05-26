@@ -42,7 +42,10 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
 #' @param hrf_shape_duration_sec Duration for the HRF reconstruction grid.
 #' @param hrf_shape_sample_res_sec Sampling resolution for the HRF grid.
 #' @return List with projected design matrices, reconstruction info and
-#'   metadata for CFALS engines.
+#'   metadata for CFALS engines. Rows of `fmri_data_obj` containing `NA`
+#'   in any voxel are zeroed out along with the corresponding rows in the
+#'   design matrices and `confound_obj` (if provided). The indices of these
+#'   rows are returned as `bad_row_idx`.
 #' @export
 create_cfals_design <- function(fmri_data_obj,
                                event_model,
@@ -67,6 +70,9 @@ create_cfals_design <- function(fmri_data_obj,
   bad_row_idx <- which(apply(Y_raw, 1, function(r) any(is.na(r))))
   if (length(bad_row_idx) > 0) {
     Y_raw[bad_row_idx, ] <- 0
+    if (!is.null(confound_obj)) {
+      confound_obj[bad_row_idx, ] <- 0
+    }
   }
 
   # Get basis dimensions

@@ -12,7 +12,10 @@ simple_cfals_data <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
 }
 
 test_that("cf_als_engine returns matrices with correct dimensions", {
@@ -23,9 +26,15 @@ test_that("cf_als_engine returns matrices with correct dimensions", {
                        R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
                        precompute_xty_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                        max_alt = 1,
                        Phi_recon_matrix = diag(dat$d),
                        h_ref_shape_canonical = rep(1, dat$d))
+##=======
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       max_alt = 1)
+##>>>>>>> main
   expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
 })
@@ -42,7 +51,9 @@ simple_small_data <- function() {
     Y <- Y + (X_list[[c]] %*% h_true) *
       matrix(rep(beta_true[c, ], each = n), n, v)
   }
-  list(X_list = X_list, Y = Y)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Phi = phi, href = href)
 }
 
 test_that("XtY strategies give identical results", {
@@ -54,18 +65,30 @@ test_that("XtY strategies give identical results", {
                            R_mat_eff = Rm,
                            fullXtX_flag = FALSE,
                            precompute_xty_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                            max_alt = 1,
                            Phi_recon_matrix = diag(2),
                            h_ref_shape_canonical = rep(1, 2))
+##=======
+                           Phi_recon_matrix = dat$Phi,
+                           h_ref_shape_canonical = dat$href,
+                           max_alt = 1)
+##>>>>>>> main
   res_onfly <- cf_als_engine(dat$X_list, dat$Y,
                              lambda_b = 0.1,
                              lambda_h = 0.2,
                              R_mat_eff = Rm,
                              fullXtX_flag = FALSE,
                              precompute_xty_flag = FALSE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                              max_alt = 1,
                              Phi_recon_matrix = diag(2),
                              h_ref_shape_canonical = rep(1, 2))
+##=======
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href,
+                             max_alt = 1)
+##>>>>>>> main
   expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
   expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
 })
@@ -79,18 +102,30 @@ test_that("XtY strategies match with fullXtX", {
                            R_mat_eff = Rm,
                            fullXtX_flag = TRUE,
                            precompute_xty_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                            max_alt = 1,
                            Phi_recon_matrix = diag(2),
                            h_ref_shape_canonical = rep(1, 2))
+##=======
+                           Phi_recon_matrix = dat$Phi,
+                           h_ref_shape_canonical = dat$href,
+                           max_alt = 1)
+##>>>>>>> main
   res_onfly <- cf_als_engine(dat$X_list, dat$Y,
                              lambda_b = 0.1,
                              lambda_h = 0.2,
                              R_mat_eff = Rm,
                              fullXtX_flag = TRUE,
                              precompute_xty_flag = FALSE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                              max_alt = 1,
                              Phi_recon_matrix = diag(2),
                              h_ref_shape_canonical = rep(1, 2))
+##=======
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href,
+                             max_alt = 1)
+##>>>>>>> main
   expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
   expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
 })
@@ -103,30 +138,46 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
                             fullXtX_flag = FALSE,
                             max_alt = 1,
                             precompute_xty_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                             Phi_recon_matrix = diag(dat$d),
                             h_ref_shape_canonical = rep(1, dat$d))
+##=======
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   res_false <- cf_als_engine(dat$X_list, dat$Y,
                              lambda_b = 0.1,
                              lambda_h = 0.1,
                              fullXtX_flag = FALSE,
                              max_alt = 1,
                              precompute_xty_flag = FALSE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                              Phi_recon_matrix = diag(dat$d),
                              h_ref_shape_canonical = rep(1, dat$d))
+##=======
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   expect_equal(res_false$h, res_true$h)
   expect_equal(res_false$beta, res_true$beta)
 })
 
 
-test_that("h_ref_shape_norm length must equal d", {
+test_that("h_ref_shape_canonical length must equal p", {
   dat <- simple_cfals_data()
-  bad_ref <- numeric(dat$d + 1)
+  bad_ref <- numeric(nrow(dat$Phi) + 1)
   expect_error(
     cf_als_engine(dat$X_list, dat$Y,
+##<<<<<<< codex/update-unit-and-wrapper-tests
                   h_ref_shape_norm = bad_ref,
                   Phi_recon_matrix = diag(dat$d),
                   h_ref_shape_canonical = rep(1, dat$d)),
     "`h_ref_shape_norm` must have length d"
+##=======
+                  Phi_recon_matrix = dat$Phi,
+                  h_ref_shape_canonical = bad_ref),
+    "`h_ref_shape_canonical` must have length"
+##>>>>>>> main
   )
 })
           
