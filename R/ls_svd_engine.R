@@ -7,7 +7,10 @@
 #' @param X_list_proj list of k design matrices (n x d each)
 #' @param Y_proj      numeric matrix of projected BOLD data (n x v)
 #' @param lambda_init ridge penalty for initial GLM solve
-#' @param h_ref_shape_norm optional reference HRF shape for sign alignment
+#' @param Phi_recon_matrix Reconstruction matrix mapping coefficients to HRF
+#'   shape (p x d)
+#' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
+#'   sign alignment
 #' @param svd_backend currently ignored, placeholder for future backends
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
@@ -17,7 +20,8 @@
 #' @keywords internal
 #' @noRd
 ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
-                          h_ref_shape_norm = NULL,
+                          Phi_recon_matrix,
+                          h_ref_shape_canonical,
                           svd_backend = c("base_R"),
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8,
@@ -34,8 +38,11 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
   }
-  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
-    stop("`h_ref_shape_norm` must have length d")
+
+  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
+    stop("`Phi_recon_matrix` must be a p x d matrix")
+  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
+    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
 
   if (!is.null(R_mat)) {
     if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
@@ -70,12 +77,11 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
     }
   }
 
-  scl <- apply(abs(H_out), 2, max)
+  H_shapes <- Phi_recon_matrix %*% H_out
+  scl <- apply(abs(H_shapes), 2, max)
   flip <- rep(1.0, v)
-  if (!is.null(h_ref_shape_norm)) {
-    align <- as.numeric(crossprod(h_ref_shape_norm, H_out))
-    flip[align < 0 & scl > epsilon_scale] <- -1.0
-  }
+  align <- colSums(H_shapes * h_ref_shape_canonical)
+  flip[align < 0 & scl > epsilon_scale] <- -1.0
   eff_scl <- pmax(scl, epsilon_scale)
   H_final <- sweep(H_out, 2, flip / eff_scl, "*")
   B_final <- sweep(B_out, 2, flip * eff_scl, "*")
