@@ -28,6 +28,7 @@ test_that("cf_als_engine returns matrices with correct dimensions", {
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
 })
 
+
 simple_small_data <- function() {
   set.seed(42)
   n <- 20; d <- 2; k <- 2; v <- 2
@@ -82,4 +83,22 @@ test_that("XtY strategies match with fullXtX", {
                              max_alt = 1)
   expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
   expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
+
+test_that("precompute_xty_flag FALSE reproduces TRUE", {
+  dat <- simple_cfals_data()
+  res_true <- cf_als_engine(dat$X_list, dat$Y,
+                            lambda_b = 0.1,
+                            lambda_h = 0.1,
+                            fullXtX_flag = FALSE,
+                            max_alt = 1,
+                            precompute_xty_flag = TRUE)
+  res_false <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX_flag = FALSE,
+                             max_alt = 1,
+                             precompute_xty_flag = FALSE)
+  expect_equal(res_false$h, res_true$h)
+  expect_equal(res_false$beta, res_true$beta)
+
 })
