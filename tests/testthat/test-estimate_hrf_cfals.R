@@ -45,6 +45,8 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
   expect_equal(dim(fit$h_coeffs), c(nbasis(HRF_SPMG3), ncol(dat$Y)))
   expect_equal(dim(fit$beta_amps), c(2, ncol(dat$Y)))
   expect_equal(rownames(fit$beta_amps), c("conditionA", "conditionB"))
+  expect_equal(fit$target_event_term_name, "hrf(condition)")
+  expect_true(is.matrix(fit$phi_recon_matrix))
 })
 
 

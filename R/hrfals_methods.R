@@ -16,7 +16,8 @@
 #' @return An object of class `hrfals_fit`.
 #' @export
 hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
-                       fmrireg_hrf_basis_used, design_info, residuals,
+                       fmrireg_hrf_basis_used, target_event_term_name,
+                       phi_recon_matrix, design_info, residuals,
                        recon_hrf = NULL, gof = NULL) {
   out <- list(h_coeffs = h_coeffs,
               beta_amps = beta_amps,
@@ -24,6 +25,8 @@ hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
               lambdas = lambdas,
               call = call,
               fmrireg_hrf_basis_used = fmrireg_hrf_basis_used,
+              target_event_term_name = target_event_term_name,
+              phi_recon_matrix = phi_recon_matrix,
               design_info = design_info,
               residuals = residuals,
               reconstructed_hrfs = recon_hrf,
@@ -41,6 +44,8 @@ print.hrfals_fit <- function(x, ...) {
   cat(sprintf("Time points: %d\n", info$n))
   cat(sprintf("Conditions: %d\n", info$k))
   cat(sprintf("Basis functions: %d\n", info$d))
+  if (!is.null(x$target_event_term_name))
+    cat(sprintf("Target term: %s\n", x$target_event_term_name))
   invisible(x)
 }
 
@@ -51,4 +56,16 @@ summary.hrfals_fit <- function(object, ...) {
               lambdas = object$lambdas)
   class(res) <- "summary.hrfals_fit"
   res
+}
+
+#' @export
+plot.hrfals_fit <- function(x, vox = 1, ...) {
+  if (is.null(x$phi_recon_matrix))
+    stop("phi_recon_matrix not available for plotting")
+  if (vox < 1 || vox > ncol(x$h_coeffs))
+    stop("'vox' out of range")
+  hrf <- x$phi_recon_matrix %*% x$h_coeffs[, vox]
+  plot(hrf, type = "l", xlab = "Time index", ylab = "Amplitude",
+       main = paste("Reconstructed HRF - voxel", vox), ...)
+  invisible(hrf)
 }
