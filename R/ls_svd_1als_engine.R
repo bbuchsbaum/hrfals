@@ -27,14 +27,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                lambda_b = 10,
                                lambda_h = 1,
                                fullXtX_flag = FALSE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                               h_ref_shape_norm = NULL,
-                               Phi_recon_matrix = NULL,
-                               h_ref_shape_canonical = NULL,
-##=======
                                Phi_recon_matrix,
                                h_ref_shape_canonical,
-##>>>>>>> main
                                svd_backend = c("base_R"),
                                epsilon_svd = 1e-8,
                                epsilon_scale = 1e-8,
@@ -129,27 +123,11 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
     H_als[, vx] <- cholSolve(lhs, rhs)
   }
 
-##<<<<<<< codex/update-unit-and-wrapper-tests
-  if (!is.null(Phi_recon_matrix) && !is.null(h_ref_shape_canonical)) {
-    recon_hrf <- Phi_recon_matrix %*% H_als
-    scl <- apply(abs(recon_hrf), 2, max)
-    align <- colSums(recon_hrf * h_ref_shape_canonical)
-    flip <- ifelse(align < 0 & scl > epsilon_scale, -1.0, 1.0)
-  } else {
-    scl <- apply(abs(H_als), 2, max)
-    flip <- rep(1.0, v)
-    if (!is.null(h_ref_shape_norm)) {
-      align <- as.numeric(crossprod(h_ref_shape_norm, H_als))
-      flip[align < 0 & scl > epsilon_scale] <- -1.0
-    }
-  }
-##=======
   H_shapes_iter <- Phi_recon_matrix %*% H_als
   scl <- apply(abs(H_shapes_iter), 2, max)
   flip <- rep(1.0, v)
   align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
   flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
-##>>>>>>> main
   eff_scl <- pmax(scl, epsilon_scale)
   H_final <- sweep(H_als, 2, flip / eff_scl, "*")
   B_final <- sweep(B_als, 2, flip * eff_scl, "*")

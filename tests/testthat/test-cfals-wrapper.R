@@ -94,15 +94,9 @@ test_that("cf_als_engine predictions match canonical GLM", {
                        R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
                        precompute_xty_flag = TRUE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                       max_alt = 1,
-                       Phi_recon_matrix = diag(ncol(dat$X_list[[1]])),
-                       h_ref_shape_canonical = rep(1, ncol(dat$X_list[[1]])))
-##=======
                        Phi_recon_matrix = dat$Phi,
                        h_ref_shape_canonical = dat$href,
                        max_alt = 1)
-##>>>>>>> main
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
   pred_cfals <- matrix(0, n, v)
@@ -117,34 +111,14 @@ test_that("cf_als_engine predictions match canonical GLM", {
 
 test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-##<<<<<<< codex/update-design-object-and-engine-arguments
   design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
   direct <- ls_svd_1als_engine(design$X_list_proj, design$Y_proj,
-##=======
-  design <- create_fmri_design(dat$event_model, HRF_SPMG3)
-  proj <- project_confounds(dat$Y, design$X_list, NULL)
-  href <- drop(reconstruction_matrix(HRF_SPMG1, dat$sframe))
-  href <- href / max(abs(href))
-  direct <- ls_svd_1als_engine(proj$X_list, proj$Y,
-##>>>>>>> main
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                               h_ref_shape_norm = design$h_ref_shape_norm,
-                               Phi_recon_matrix = reconstruction_matrix(HRF_SPMG3, dat$sframe),
-                               h_ref_shape_canonical = create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)$h_ref_shape_canonical)
-##=======
-##<<<<<<< codex/update-design-object-and-engine-arguments
-                               h_ref_shape_norm = design$h_ref_shape_norm,
                                Phi_recon_matrix = design$Phi_recon_matrix,
                                h_ref_shape_canonical = design$h_ref_shape_canonical)
-##=======
-                               Phi_recon_matrix = design$Phi,
-                               h_ref_shape_canonical = href)
-##>>>>>>> main
-##>>>>>>> main
   wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
                         method = "ls_svd_1als",
                         fullXtX = TRUE,

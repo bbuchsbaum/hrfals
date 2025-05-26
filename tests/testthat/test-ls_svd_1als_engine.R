@@ -26,13 +26,8 @@ test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
                             lambda_init = 0,
                             lambda_b = 0.1,
                             lambda_h = 0.1,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                            Phi_recon_matrix = diag(dat$d),
-                            h_ref_shape_canonical = rep(1, dat$d))
-##=======
                             Phi_recon_matrix = dat$Phi,
                             h_ref_shape_canonical = dat$href)
-##>>>>>>> main
   expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$h_ls_svd), c(dat$d, ncol(dat$Y)))
@@ -60,25 +55,15 @@ test_that("fullXtX_flag has no effect for single condition", {
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
                                  fullXtX_flag = FALSE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                                 Phi_recon_matrix = diag(2),
-                                 h_ref_shape_canonical = rep(1, 2))
-##=======
                                  Phi_recon_matrix = dat$Phi,
                                  h_ref_shape_canonical = dat$href)
-##>>>>>>> main
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
                                  fullXtX_flag = TRUE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                                 Phi_recon_matrix = diag(2),
-                                 h_ref_shape_canonical = rep(1, 2))
-##=======
                                  Phi_recon_matrix = dat$Phi,
                                  h_ref_shape_canonical = dat$href)
-##>>>>>>> main
   expect_equal(res_diag$h, res_full$h)
   expect_equal(res_diag$beta, res_full$beta)
 })
@@ -108,24 +93,14 @@ test_that("fullXtX_flag influences estimates when conditions correlate", {
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
                                  fullXtX_flag = FALSE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                                 Phi_recon_matrix = diag(2),
-                                 h_ref_shape_canonical = rep(1, 2))
-##=======
                                  Phi_recon_matrix = dat$Phi,
                                  h_ref_shape_canonical = dat$href)
-##>>>>>>> main
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
                                  fullXtX_flag = TRUE,
-##<<<<<<< codex/update-unit-and-wrapper-tests
-                                 Phi_recon_matrix = diag(2),
-                                 h_ref_shape_canonical = rep(1, 2))
-##=======
                                  Phi_recon_matrix = dat$Phi,
                                  h_ref_shape_canonical = dat$href)
-##>>>>>>> main
   expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
 })
