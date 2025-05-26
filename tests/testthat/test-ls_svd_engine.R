@@ -25,3 +25,15 @@ test_that("ls_svd_engine returns matrices with correct dimensions", {
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$Gamma_hat), c(dat$d * dat$k, ncol(dat$Y)))
 })
+
+test_that("ls_svd_engine supports custom penalty matrix", {
+  dat <- simple_ls_svd_data()
+  Rmat <- diag(dat$d) * 2
+  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0.5, R_mat = Rmat)
+  Xbig <- do.call(cbind, dat$X_list)
+  XtX <- crossprod(Xbig)
+  Xty <- crossprod(Xbig, dat$Y)
+  bigR <- kronecker(diag(dat$k), Rmat)
+  Gamma_manual <- solve(XtX + 0.5 * bigR, Xty)
+  expect_equal(res$Gamma_hat, Gamma_manual)
+})
