@@ -153,6 +153,30 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
   expect_equal(res_false$beta, res_true$beta)
 })
 
+test_that("precompute_xty_flag FALSE reproduces TRUE with multiple voxels", {
+  dat <- simple_small_data()
+  res_true <- cf_als_engine(dat$X_list, dat$Y,
+                            lambda_b = 0.1,
+                            lambda_h = 0.2,
+                            fullXtX_flag = FALSE,
+                            R_mat_eff = diag(2) * 1.5,
+                            max_alt = 1,
+                            precompute_xty_flag = TRUE,
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href)
+  res_false <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             fullXtX_flag = FALSE,
+                             R_mat_eff = diag(2) * 1.5,
+                             max_alt = 1,
+                             precompute_xty_flag = FALSE,
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href)
+  expect_equal(res_false$h, res_true$h)
+  expect_equal(res_false$beta, res_true$beta)
+})
+
 
 test_that("h_ref_shape_canonical length must equal p", {
   dat <- simple_cfals_data()
