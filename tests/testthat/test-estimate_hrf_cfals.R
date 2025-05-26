@@ -90,6 +90,51 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   expect_equal(wrap$beta_amps, direct$beta)
 })
 
+test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  Rb <- penalty_matrix(HRF_SPMG3)
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               h_ref_shape_norm = NULL,
+                               R_mat = Rb)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "basis")
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+})
+
+test_that("penalty_R_mat_type 'custom' uses provided matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  R_custom <- diag(prep$d_basis_dim) * 2
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               h_ref_shape_norm = NULL,
+                               R_mat = R_custom)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "custom",
+                             R_mat = R_custom)
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+})
+
 
 simulate_multiterm_data <- function(hrf_basis, noise_sd = 0.05) {
   sf <- sampling_frame(blocklens = 60, TR = 1)
