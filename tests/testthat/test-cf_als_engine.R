@@ -122,3 +122,35 @@ test_that("size estimate uses numeric arithmetic", {
   expect_gt(size_est, 2e9)
 
 })
+
+
+# Additional multi-voxel test to ensure on-the-fly XtY matches precomputed
+multi_voxel_data <- function() {
+  set.seed(66)
+  n <- 30; d <- 2; k <- 2; v <- 3
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Y <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    Y <- Y + (X_list[[c]] %*% h_true) *
+      matrix(rep(beta_true[c, ], each = n), n, v)
+  }
+  list(X_list = X_list, Y = Y)
+}
+
+test_that("XtY cache recomputed per voxel when precomputing disabled", {
+  dat <- multi_voxel_data()
+  res_true <- cf_als_engine(dat$X_list, dat$Y,
+                            lambda_b = 0.1,
+                            lambda_h = 0.2,
+                            precompute_xty_flag = TRUE,
+                            max_alt = 1)
+  res_false <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             precompute_xty_flag = FALSE,
+                             max_alt = 1)
+  expect_equal(res_false$h, res_true$h, tolerance = 1e-12)
+  expect_equal(res_false$beta, res_true$beta, tolerance = 1e-12)
+})
