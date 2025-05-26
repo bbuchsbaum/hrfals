@@ -46,6 +46,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     stop("`Phi_recon_matrix` must be a p x d matrix")
   if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
     stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
+  if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
+    stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
   for (X in X_list_proj) {
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
