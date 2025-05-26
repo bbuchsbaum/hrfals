@@ -28,7 +28,9 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                svd_backend = c("base_R"),
                                epsilon_svd = 1e-8,
                                epsilon_scale = 1e-8,
-                               R_mat = NULL) {
+                               R_mat = NULL,
+                               Phi_recon_matrix = NULL,
+                               h_ref_shape_canonical = NULL) {
 
   if (lambda_init < 0 || lambda_b < 0 || lambda_h < 0)
     stop("Lambdas must be non-negative")

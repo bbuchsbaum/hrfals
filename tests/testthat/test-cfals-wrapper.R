@@ -106,14 +106,15 @@ test_that("cf_als_engine predictions match canonical GLM", {
 
 test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  design <- create_fmri_design(dat$event_model, HRF_SPMG3)
-  proj <- project_confounds(dat$Y, design$X_list, NULL)
-  direct <- ls_svd_1als_engine(proj$X_list, proj$Y,
+  design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  direct <- ls_svd_1als_engine(design$X_list_proj, design$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-                               h_ref_shape_norm = design$h_ref_shape_norm)
+                               h_ref_shape_norm = design$h_ref_shape_norm,
+                               Phi_recon_matrix = design$Phi_recon_matrix,
+                               h_ref_shape_canonical = design$h_ref_shape_canonical)
   wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
                         method = "ls_svd_1als",
                         fullXtX = TRUE,
