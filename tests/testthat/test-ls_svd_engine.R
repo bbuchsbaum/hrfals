@@ -25,3 +25,15 @@ test_that("ls_svd_engine returns matrices with correct dimensions", {
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$Gamma_hat), c(dat$d * dat$k, ncol(dat$Y)))
 })
+
+test_that("ls_svd_engine accepts custom R_mat", {
+  dat <- simple_ls_svd_data()
+  Rm <- diag(dat$d) * 2
+  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0.1, R_mat = Rm)
+  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
+})
+
+test_that("ls_svd_engine validates R_mat dimensions", {
+  dat <- simple_ls_svd_data()
+  expect_error(ls_svd_engine(dat$X_list, dat$Y, R_mat = matrix(1, 2, 2)))
+})

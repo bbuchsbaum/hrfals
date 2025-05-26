@@ -11,15 +11,19 @@
 #' @param svd_backend currently ignored, placeholder for future backends
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
+#' @param R_mat optional penalty matrix for the ridge step. If `NULL`,
+#'   the identity matrix is used which corresponds to standard ridge
+#'   regularisation.
 #' @return list with matrices `h` (d x v), `beta` (k x v) and
 #'         `Gamma_hat` (d*k x v)
 #' @keywords internal
 #' @noRd
-ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1, 
+ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
                           h_ref_shape_norm = NULL,
                           svd_backend = c("base_R"),
                           epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8) {
+                          epsilon_scale = 1e-8,
+                          R_mat = NULL) {
   svd_backend <- match.arg(svd_backend)
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
@@ -32,6 +36,13 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
   }
   if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
     stop("`h_ref_shape_norm` must have length d")
+  if (!is.null(R_mat)) {
+    if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
+      stop(paste("R_mat must be a", d, "x", d, "matrix"))
+    }
+  } else {
+    R_mat <- diag(d)
+  }
 
   cholSolve <- function(M, B, eps = max(epsilon_svd, epsilon_scale)) {
     L <- tryCatch(chol(M),
@@ -42,7 +53,8 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
   Xbig <- do.call(cbind, X_list_proj)
   XtX  <- crossprod(Xbig)
   Xty  <- crossprod(Xbig, Y_proj)
-  XtX_ridge <- XtX + lambda_init * diag(ncol(Xbig))
+  penalty_big <- kronecker(diag(k), R_mat)
+  XtX_ridge <- XtX + lambda_init * penalty_big
   Gamma_hat <- cholSolve(XtX_ridge, Xty)
 
   H_out <- matrix(0.0, d, v)
