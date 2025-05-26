@@ -71,6 +71,28 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   expect_equal(wrap$beta_amps, direct$beta)
 })
 
+test_that("estimate_hrf_cfals predictions match canonical GLM", {
+  set.seed(123)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                            HRF_SPMG3,
+                            method = "cf_als",
+                            lambda_b = 0,
+                            lambda_h = 0,
+                            max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
+  Xbig <- do.call(cbind, dat$X_list)
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
+})
+
 
 simulate_multiterm_data <- function(hrf_basis, noise_sd = 0.05) {
   sf <- sampling_frame(blocklens = 60, TR = 1)

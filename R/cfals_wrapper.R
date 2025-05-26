@@ -131,9 +131,13 @@ fmrireg_cfals <- function(fmri_data_obj,
 
   n <- nrow(Yp)
   v <- ncol(Yp)
-  pred_p <- Reduce(`+`, Map(function(Xc, bc) {
-    Xc %*% (fit$h * matrix(bc, nrow = nrow(fit$h), ncol = v, byrow = TRUE))
-  }, Xp, asplit(fit$beta, 1)))
+  k <- length(Xp)
+  d <- nrow(fit$h)
+  pred_p <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    pred_p <- pred_p + (Xp[[c]] %*% fit$h) *
+      matrix(rep(fit$beta[c, ], each = n), n, v)
+  }
   resids <- Yp - pred_p
 
   SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
