@@ -14,13 +14,19 @@ simple_ls_svd_data <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
 }
 
 
 test_that("ls_svd_engine returns matrices with correct dimensions", {
   dat <- simple_ls_svd_data()
-  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0)
+  res <- ls_svd_engine(dat$X_list, dat$Y,
+                       lambda_init = 0,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href)
   expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$Gamma_hat), c(dat$d * dat$k, ncol(dat$Y)))
@@ -29,7 +35,11 @@ test_that("ls_svd_engine returns matrices with correct dimensions", {
 test_that("ls_svd_engine supports custom penalty matrix", {
   dat <- simple_ls_svd_data()
   Rmat <- diag(dat$d) * 2
-  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0.5, R_mat = Rmat)
+  res <- ls_svd_engine(dat$X_list, dat$Y,
+                       lambda_init = 0.5,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       R_mat = Rmat)
   Xbig <- do.call(cbind, dat$X_list)
   XtX <- crossprod(Xbig)
   Xty <- crossprod(Xbig, dat$Y)

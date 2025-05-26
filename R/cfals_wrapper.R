@@ -94,13 +94,14 @@ fmrireg_cfals <- function(fmri_data_obj,
     stop("Sampling information could not be determined from input")
   }
 
-  design <- create_fmri_design(event_model, hrf_basis)
-  X_list <- design$X_list
-  cond_names <- names(X_list)
+  design <- create_cfals_design(fmri_data_obj,
+                                event_model,
+                                hrf_basis,
+                                confound_obj = confound_obj)
 
-  proj <- project_confounds(Y, X_list, confound_obj)
-  Xp <- proj$X_list
-  Yp <- proj$Y
+  Xp <- design$X_list_proj
+  Yp <- design$Y_proj
+  cond_names <- design$condition_names
 
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
@@ -126,7 +127,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 
   rownames(fit$beta) <- cond_names
 
-  Phi <- design$Phi
+  Phi <- design$Phi_recon_matrix
   recon_hrf <- Phi %*% fit$h
 
   n <- nrow(Yp)
@@ -153,7 +154,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                            call = match.call(),
                            hrf_basis = hrf_basis,
                            design_info = list(d = design$d,
-                                              k = length(X_list),
+                                              k = design$k,
                                               n = n,
                                               v = v,
                                               fullXtX = fullXtX),
