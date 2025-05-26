@@ -27,6 +27,8 @@
 #'   available from `hrf_basis`, it can be passed here.
 #' @param fullXtX Logical; if `TRUE` include cross condition terms in
 #'   the h update (where supported).
+#' @param precompute_xty_flag Logical; passed to `cf_als_engine` to control
+#'   precomputation of `XtY` matrices.
 #' @param max_alt Number of alternating updates after initialisation
 #'   when `method = "cf_als"`.
 #' @param ... Additional arguments passed to the underlying estimation engine.
@@ -62,6 +64,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                          lambda_h = 1,
                          R_mat = NULL,
                          fullXtX = FALSE,
+                         precompute_xty_flag = TRUE,
                          max_alt = 1,
                          ...) {
 
@@ -105,10 +108,11 @@ fmrireg_cfals <- function(fmri_data_obj,
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
+                           R_mat_eff = R_mat,
                            fullXtX_flag = fullXtX,
+                           precompute_xty_flag = precompute_xty_flag,
                            h_ref_shape_norm = design$h_ref_shape_norm,
-                           max_alt = max_alt,
-                           R_mat = R_mat, ...)
+                           max_alt = max_alt, ...)
   )
 
   rownames(fit$beta) <- cond_names
