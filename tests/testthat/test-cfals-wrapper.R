@@ -41,11 +41,12 @@ test_that("fmrireg_hrf_cfals works across HRF bases", {
   bases <- list(HRF_SPMG3, hrfspline_generator(nbasis = 4))
   for (b in bases) {
     dat <- simulate_cfals_wrapper_data(b)
+    design <- create_cfals_design(dat$Y, dat$event_model, b)
     fit <- fmrireg_hrf_cfals(dat$Y, dat$event_model, b,
                              lam_beta = 0.1, lam_h = 0.1)
     expect_equal(dim(fit$h_coeffs), c(nbasis(b), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
-    recon <- reconstruction_matrix(b, dat$sframe) %*% fit$h_coeffs
+    recon <- design$Phi_recon_matrix %*% fit$h_coeffs
     expect_true(all(is.finite(recon)))
   }
 })
@@ -91,7 +92,9 @@ test_that("cf_als_engine predictions match canonical GLM", {
                        R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
                        precompute_xty_flag = TRUE,
-                       max_alt = 1)
+                       max_alt = 1,
+                       Phi_recon_matrix = diag(ncol(dat$X_list[[1]])),
+                       h_ref_shape_canonical = rep(1, ncol(dat$X_list[[1]])))
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
   pred_cfals <- matrix(0, n, v)
@@ -113,7 +116,9 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-                               h_ref_shape_norm = design$h_ref_shape_norm)
+                               h_ref_shape_norm = design$h_ref_shape_norm,
+                               Phi_recon_matrix = reconstruction_matrix(HRF_SPMG3, dat$sframe),
+                               h_ref_shape_canonical = create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)$h_ref_shape_canonical)
   wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
                         method = "ls_svd_1als",
                         fullXtX = TRUE,

@@ -22,7 +22,9 @@ test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
   res <- ls_svd_1als_engine(dat$X_list, dat$Y,
                             lambda_init = 0,
                             lambda_b = 0.1,
-                            lambda_h = 0.1)
+                            lambda_h = 0.1,
+                            Phi_recon_matrix = diag(dat$d),
+                            h_ref_shape_canonical = rep(1, dat$d))
   expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$h_ls_svd), c(dat$d, ncol(dat$Y)))
@@ -47,12 +49,16 @@ test_that("fullXtX_flag has no effect for single condition", {
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
+                                 fullXtX_flag = FALSE,
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
+                                 fullXtX_flag = TRUE,
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
   expect_equal(res_diag$h, res_full$h)
   expect_equal(res_diag$beta, res_full$beta)
 })
@@ -79,11 +85,15 @@ test_that("fullXtX_flag influences estimates when conditions correlate", {
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
+                                 fullXtX_flag = FALSE,
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
+                                 fullXtX_flag = TRUE,
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
   expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
 })

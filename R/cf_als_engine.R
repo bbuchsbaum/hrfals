@@ -31,7 +31,9 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           h_ref_shape_norm = NULL,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8) {
+                          epsilon_scale = 1e-8,
+                          Phi_recon_matrix = NULL,
+                          h_ref_shape_canonical = NULL) {
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
@@ -169,11 +171,18 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
   }
 
-  scl <- apply(abs(h_current), 2, max)
-  flip <- rep(1.0, v)
-  if (!is.null(h_ref_shape_norm)) {
-    align <- colSums(h_current * h_ref_shape_norm)
-    flip[align < 0 & scl > epsilon_scale] <- -1.0
+  if (!is.null(Phi_recon_matrix) && !is.null(h_ref_shape_canonical)) {
+    recon_hrf <- Phi_recon_matrix %*% h_current
+    scl <- apply(abs(recon_hrf), 2, max)
+    align <- colSums(recon_hrf * h_ref_shape_canonical)
+    flip <- ifelse(align < 0 & scl > epsilon_scale, -1.0, 1.0)
+  } else {
+    scl <- apply(abs(h_current), 2, max)
+    flip <- rep(1.0, v)
+    if (!is.null(h_ref_shape_norm)) {
+      align <- colSums(h_current * h_ref_shape_norm)
+      flip[align < 0 & scl > epsilon_scale] <- -1.0
+    }
   }
   eff_scl <- pmax(scl, epsilon_scale)
   h_final <- sweep(h_current, 2, flip / eff_scl, "*")
