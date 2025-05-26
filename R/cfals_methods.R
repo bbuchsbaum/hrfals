@@ -21,13 +21,22 @@
 #' parameters and design information.
 #'
 #' @examples
-#' sframe <- sampling_frame(blocklens = 20, TR = 1)
-#' ev_df <- data.frame(onset = c(5, 15), block = 1)
-#' emod <- event_model(onset ~ hrf(constant), data = ev_df,
-#'                     block = ~ block, sampling_frame = sframe)
-#' Y <- matrix(rnorm(20 * 1), 20, 1)
-#' fit <- fmrireg_cfals(Y, emod, HRF_SPMG1)
-#' str(fit)
+#' \dontrun{
+#' library(fmrireg)
+#' 
+#' # Create sampling frame and event model
+#' sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
+#' ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
+#' emod <- fmrireg::event_model(onset ~ hrf(cond), data = ev_df, 
+#'                              block = ~ block, sampling_frame = sframe)
+#' 
+#' # Simulate some BOLD data
+#' Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
+#' 
+#' # Fit using CF-ALS with SPMG3 basis (3 basis functions)
+#' fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
+#' print(fit)
+#' }
 #' @export
 fmrireg_cfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
                               hrf_basis, design_info, residuals,

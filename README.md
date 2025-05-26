@@ -33,7 +33,7 @@ library(fmrireg)
 # Create sampling frame and event model
 sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
 ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
-emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG1),
+emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
                             data = ev_df, block = ~ block,
                             sampling_frame = sframe)
 
@@ -44,7 +44,7 @@ Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 cfals_fit <- fmrireg_hrf_cfals(
   fmri_data_obj = Y_matrix,
   event_model = emod,
-  hrf_basis = fmrireg::HRF_SPMG1,
+  hrf_basis = fmrireg::HRF_SPMG3,
   lam_beta = 5,
   lam_h = 0.5,
   max_alt = 1

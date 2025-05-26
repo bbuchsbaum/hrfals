@@ -83,6 +83,7 @@ test_that("XtY strategies match with fullXtX", {
                              max_alt = 1)
   expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
   expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
+})
 
 test_that("precompute_xty_flag FALSE reproduces TRUE", {
   dat <- simple_cfals_data()
@@ -100,7 +101,6 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
                              precompute_xty_flag = FALSE)
   expect_equal(res_false$h, res_true$h)
   expect_equal(res_false$beta, res_true$beta)
-
 })
 
 

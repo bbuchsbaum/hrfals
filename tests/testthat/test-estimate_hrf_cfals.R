@@ -52,8 +52,7 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
 
 test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  prep <- prepare_cfals_inputs_from_fmrireg_term(dat$Y, dat$event_model,
-                                                 "hrf(condition)", HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
   direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
