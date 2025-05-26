@@ -12,6 +12,9 @@
 #' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
 #' @param h_ref_shape_norm optional reference HRF shape for sign alignment
 #' @param max_alt number of alternating updates after initialization
+#' @param precompute_xty_flag logical; if `TRUE` pre-compute the cross
+#'   products \code{t(X) \%*\% Y} for each condition.  Set to `FALSE`
+#'   to compute these on the fly and reduce memory usage.
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
 #' @return list with matrices `h` (d x v) and `beta` (k x v). The
@@ -25,9 +28,10 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat = NULL,
                           fullXtX_flag = FALSE,
                           h_ref_shape_norm = NULL,
-                          max_alt = 1,
-                          epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8) {
+                         max_alt = 1,
+                         precompute_xty_flag = TRUE,
+                         epsilon_svd = 1e-8,
+                         epsilon_scale = 1e-8) {
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
@@ -65,7 +69,17 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   b_current <- init$beta
 
   XtX_list <- lapply(X_list_proj, crossprod)
-  XtY_list <- lapply(X_list_proj, function(X) crossprod(X, Y_proj))
+
+  size_est <- k * d * v * 8
+  if (precompute_xty_flag && size_est > 2e9) {
+    message("Estimated size of XtY_list (", size_est,
+            " bytes) is large; consider `precompute_xty_flag = FALSE`")
+  }
+  XtY_list <- if (precompute_xty_flag) {
+    lapply(X_list_proj, function(X) crossprod(X, Y_proj))
+  } else {
+    NULL
+  }
 
   if (fullXtX_flag) {
     XtX_full_list <- matrix(vector("list", k * k), k, k)
@@ -81,8 +95,14 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   for (iter in seq_len(max_alt)) {
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
-      DhTy_vx <- vapply(seq_len(k), function(c)
-        crossprod(h_vx, XtY_list[[c]][, vx]), numeric(1))
+      DhTy_vx <- vapply(seq_len(k), function(c) {
+        xty <- if (is.null(XtY_list)) {
+          crossprod(X_list_proj[[c]], Y_proj[, vx])
+        } else {
+          XtY_list[[c]][, vx]
+        }
+        crossprod(h_vx, xty)
+      }, numeric(1))
       G_vx <- matrix(0.0, k, k)
       for (l in seq_len(k)) {
         if (fullXtX_flag) {
@@ -108,7 +128,12 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       lhs <- lambda_h * h_penalty_matrix 
       rhs <- numeric(d)
       for (l in seq_len(k)) {
-        rhs <- rhs + b_vx[l] * XtY_list[[l]][, vx]
+        xty <- if (is.null(XtY_list)) {
+          crossprod(X_list_proj[[l]], Y_proj[, vx])
+        } else {
+          XtY_list[[l]][, vx]
+        }
+        rhs <- rhs + b_vx[l] * xty
         if (fullXtX_flag) {
           for (m in seq_len(k)) {
             lhs <- lhs + b_vx[l] * b_vx[m] * XtX_full_list[[l, m]]
