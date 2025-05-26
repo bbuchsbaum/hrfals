@@ -102,3 +102,12 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
   expect_equal(res_false$beta, res_true$beta)
 
 })
+
+test_that("size estimate uses numeric arithmetic", {
+  k <- .Machine$integer.max
+  d <- 2L
+  v <- 1L
+  size_est <- as.numeric(k) * d * v * 8
+  expect_true(is.finite(size_est))
+  expect_gt(size_est, 2e9)
+})
