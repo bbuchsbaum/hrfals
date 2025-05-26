@@ -14,7 +14,10 @@ simple_ls_svd_data <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
 }
 
 test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
@@ -22,7 +25,14 @@ test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
   res <- ls_svd_1als_engine(dat$X_list, dat$Y,
                             lambda_init = 0,
                             lambda_b = 0.1,
-                            lambda_h = 0.1)
+                            lambda_h = 0.1,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                            Phi_recon_matrix = diag(dat$d),
+                            h_ref_shape_canonical = rep(1, dat$d))
+##=======
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
   expect_equal(dim(res$h_ls_svd), c(dat$d, ncol(dat$Y)))
@@ -38,7 +48,9 @@ single_condition_data <- function() {
   h_true <- matrix(rnorm(d * v), d, v)
   b_true <- rnorm(v)
   Y <- (X %*% h_true) * matrix(rep(b_true, each = n), n, v)
-  list(X_list = list(X), Y = Y)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = list(X), Y = Y, Phi = phi, href = href)
 }
 
 test_that("fullXtX_flag has no effect for single condition", {
@@ -47,12 +59,26 @@ test_that("fullXtX_flag has no effect for single condition", {
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
+                                 fullXtX_flag = FALSE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
+##=======
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
+                                 fullXtX_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
+##=======
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   expect_equal(res_diag$h, res_full$h)
   expect_equal(res_diag$beta, res_full$beta)
 })
@@ -70,7 +96,9 @@ correlated_data <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Phi = phi, href = href)
 }
 
 test_that("fullXtX_flag influences estimates when conditions correlate", {
@@ -79,11 +107,25 @@ test_that("fullXtX_flag influences estimates when conditions correlate", {
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
+                                 fullXtX_flag = FALSE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
+##=======
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
                                  lambda_init = 0,
                                  lambda_b = 0.1,
                                  lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
+                                 fullXtX_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                                 Phi_recon_matrix = diag(2),
+                                 h_ref_shape_canonical = rep(1, 2))
+##=======
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+##>>>>>>> main
   expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
 })
