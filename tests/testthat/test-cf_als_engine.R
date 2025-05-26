@@ -103,6 +103,16 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
 
 })
 
+
+test_that("h_ref_shape_norm length must equal d", {
+  dat <- simple_cfals_data()
+  bad_ref <- numeric(dat$d + 1)
+  expect_error(
+    cf_als_engine(dat$X_list, dat$Y, h_ref_shape_norm = bad_ref),
+    "`h_ref_shape_norm` must have length d"
+  )
+})
+          
 test_that("size estimate uses numeric arithmetic", {
   k <- .Machine$integer.max
   d <- 2L
@@ -110,4 +120,5 @@ test_that("size estimate uses numeric arithmetic", {
   size_est <- as.numeric(k) * d * v * 8
   expect_true(is.finite(size_est))
   expect_gt(size_est, 2e9)
+
 })
