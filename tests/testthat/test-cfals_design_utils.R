@@ -88,13 +88,33 @@ test_that("create_cfals_design zeroes NA rows", {
                       block = ~ block, sampling_frame = sf)
   Y <- matrix(rnorm(10 * 1), 10, 1)
   Y[3, ] <- NA
-  
+
   res <- create_cfals_design(Y, emod, HRF_SPMG3)
   
   expect_equal(res$bad_row_idx, 3)
   expect_true(all(res$Y_proj[3, ] == 0))
   for (Xc in res$X_list_proj) {
     expect_true(all(Xc[3, ] == 0))
+  }
+})
+
+test_that("create_cfals_design zeroes NA rows with confounds", {
+  sf <- sampling_frame(10, TR = 1)
+  events <- data.frame(onset = c(1, 5),
+                       condition = factor(c("A", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(10 * 1), 10, 1)
+  Y[4, ] <- NA
+  Z <- matrix(rnorm(10), ncol = 1)
+
+  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z)
+
+  expect_equal(res$bad_row_idx, 4)
+  expect_true(all(res$Y_proj[4, ] == 0))
+  for (Xc in res$X_list_proj) {
+    expect_true(all(Xc[4, ] == 0))
   }
 })
 
