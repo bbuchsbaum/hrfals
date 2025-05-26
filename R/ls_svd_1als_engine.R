@@ -9,7 +9,12 @@
 #' @param lambda_init ridge penalty for initial GLM solve
 #' @param lambda_b ridge penalty for \eqn{\beta}-update
 #' @param lambda_h ridge penalty for \eqn{h}-update
-#' @param fullXtX_flag logical; if TRUE use full cross-terms in h-update
+#' @param fullXtX_flag Logical. If `TRUE`, the h-update step uses the full
+#'   Gramian including cross-condition terms
+#'   \eqn{(\sum_l \beta_l X_l)^\top(\sum_m \beta_m X_m)}. If `FALSE` (default)
+#'   the Gramian omits cross-condition terms,
+#'   \eqn{\sum_l \beta_l^2 X_l^\top X_l}. A single shared HRF coefficient
+#'   vector is still estimated per voxel.
 #' @param Phi_recon_matrix Reconstruction matrix mapping coefficients to HRF
 #'   shape (p x d)
 #' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
@@ -51,11 +56,6 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
     }
   }
 
-  cholSolve <- function(M, B) {
-    R <- tryCatch(chol(M),
-                  error = function(e) chol(M + 1e-6 * diag(nrow(M))))
-    backsolve(R, forwardsolve(t(R), B))
-  }
   init <- ls_svd_engine(X_list_proj, Y_proj,
                         lambda_init = lambda_init,
                         Phi_recon_matrix = Phi_recon_matrix,
@@ -102,7 +102,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
         crossprod(h_vx, XtX_list[[c]] %*% h_vx), numeric(1))
       G_vx <- diag(diag_vals, k)
     }
-    B_als[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx)
+      B_als[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
+                               eps = max(epsilon_svd, epsilon_scale))
   }
 
   b_current <- B_als
@@ -122,7 +123,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
         lhs <- lhs + b_vx[l]^2 * XtX_list[[l]]
       }
     }
-    H_als[, vx] <- cholSolve(lhs, rhs)
+      H_als[, vx] <- cholSolve(lhs, rhs,
+                               eps = max(epsilon_svd, epsilon_scale))
   }
 
   H_shapes_iter <- Phi_recon_matrix %*% H_als

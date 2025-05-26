@@ -25,8 +25,13 @@
 #'   If `NULL` (default), an identity matrix is used, corresponding to a simple
 #'   ridge penalty. If a basis-specific penalty (e.g., for smoothing) is
 #'   available from `hrf_basis`, it can be passed here.
-#' @param fullXtX Logical; if `TRUE` include cross condition terms in
-#'   the h update (where supported).
+#' @param fullXtX Logical. If `TRUE`, the h-update step uses the full
+#'   Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)},
+#'   including cross-condition terms \eqn{\beta_l \beta_m X_l^\top X_m}.
+#'   If `FALSE` (default), cross-condition terms are omitted and the
+#'   Gramian is approximated by \eqn{\sum_l \beta_l^2 X_l^\top X_l}.
+#'   In both cases a single shared HRF coefficient vector is estimated
+#'   per voxel.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine` to control
 #'   precomputation of `XtY` matrices.
 #' @param max_alt Number of alternating updates after initialisation
@@ -40,9 +45,10 @@
 #' ALS refinement step, or the iterative \code{"cf_als"} engine.  The
 #' ridge penalties \code{lambda_init}, \code{lambda_b} and
 #' \code{lambda_h} control regularisation of the initial solve, the
-#' beta-update and the h-update respectively.  Setting
-#' \code{fullXtX = TRUE} includes cross-condition terms in the h-update
-#' (when supported by the chosen engine).  R\eqn{^2} is computed on the
+#' beta-update and the h-update respectively.  When
+#' \code{fullXtX = TRUE} the h-update uses the full cross-condition
+#' Gramian; otherwise an approximation ignoring off-diagonal terms is
+#' used. R\eqn{^2} is computed on the
 #' data after confound projection.
 #'
 #' @examples
@@ -193,12 +199,13 @@ fmrireg_cfals <- function(fmri_data_obj,
 #'   If `NULL` (default), an identity matrix is used, corresponding to a simple
 #'   ridge penalty. If a basis-specific penalty (e.g., for smoothing) is
 #'   available from `hrf_basis`, it can be passed here.
-#' @param fullXtX Logical. If `TRUE`, include cross-condition terms in the
-#'   h-update, meaning the design matrices for all conditions are used jointly
-#'   when estimating the HRF coefficients. If `FALSE` (default), the HRF
-#'   coefficients are estimated independently for each condition (though the
-#'   same HRF shape `h` is assumed across conditions if not voxel-wise).
-#'   The proposal indicates `fullXtX` is for the h-update.
+#' @param fullXtX Logical. If `TRUE`, the h-update step uses the full
+#'   Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)},
+#'   including cross-condition terms \eqn{\beta_l \beta_m X_l^\top X_m}.
+#'   If `FALSE` (default), cross-condition terms are omitted and the
+#'   Gramian is approximated by \eqn{\sum_l \beta_l^2 X_l^\top X_l}. In
+#'   both cases a single shared HRF coefficient vector is estimated per
+#'   voxel.
 #' @param max_alt Integer. The maximum number of alternations between the beta
 #'   and h updates. The proposal notes that empirically one alternation
 #'   (`max_alt = 1`) after SVD initialization is often sufficient.

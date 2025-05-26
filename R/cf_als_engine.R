@@ -10,7 +10,12 @@
 #' @param lambda_h ridge penalty for h-update
 #' @param R_mat_eff effective d x d penalty matrix for h-update. If NULL a
 #'   diagonal matrix is used.
-#' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
+#' @param fullXtX_flag Logical. If `TRUE`, the h-update step uses the full
+#'   Gramian including cross-condition terms
+#'   \eqn{(\sum_l \beta_l X_l)^\top(\sum_m \beta_m X_m)}. If `FALSE`
+#'   (default) the Gramian omits cross-condition terms,
+#'   \eqn{\sum_l \beta_l^2 X_l^\top X_l}. A single shared HRF coefficient
+#'   vector is still estimated per voxel.
 #' @param precompute_xty_flag logical; if TRUE precompute `XtY_list` otherwise
 #'   compute per voxel on-the-fly
 #' @param Phi_recon_matrix p x d matrix for sign alignment
@@ -62,14 +67,6 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
   }
 
-  cholSolve <- function(M, b, eps = max(epsilon_svd, epsilon_scale)) {
-    ok <- TRUE
-    L  <- tryCatch(chol(M), error = function(e) { ok <<- FALSE ; NULL })
-    if (!ok || (is.null(L) || min(diag(L)) < eps)) {
-      L <- chol(M + eps * diag(nrow(M)))
-    }
-    backsolve(L, forwardsolve(t(L), b))
-  }
 
   init <- ls_svd_engine(X_list_proj, Y_proj,
                         lambda_init = 0,
@@ -140,7 +137,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
         }
       }
-      b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx)
+        b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
+                                     eps = max(epsilon_svd, epsilon_scale))
     }
 
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
@@ -184,7 +182,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           lhs <- lhs + b_vx[l]^2 * XtX_list[[l]]
         }
       }
-    h_current[, vx] <- cholSolve(lhs, rhs)
+      h_current[, vx] <- cholSolve(lhs, rhs,
+                                   eps = max(epsilon_svd, epsilon_scale))
     }
 
     iter_final <- iter
