@@ -66,9 +66,16 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
+##<<<<<<< codex/update-design-object-and-engine-arguments
+                               h_ref_shape_norm = NULL,
+                               R_mat = diag(prep$d_basis_dim),
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical)
+##=======
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = diag(prep$d_basis_dim))
+##>>>>>>> main
   wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,

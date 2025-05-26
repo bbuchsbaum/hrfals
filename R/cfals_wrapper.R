@@ -94,44 +94,79 @@ fmrireg_cfals <- function(fmri_data_obj,
     stop("Sampling information could not be determined from input")
   }
 
+## <<<<<<< codex/update-design-object-and-engine-arguments
+  design <- create_cfals_design(fmri_data_obj,
+                                event_model,
+                                hrf_basis,
+                                confound_obj = confound_obj)
+## =======
   design <- create_fmri_design(event_model, hrf_basis)
   X_list <- design$X_list
   cond_names <- names(X_list)
   Phi <- design$Phi
   h_ref_shape_canonical <- drop(reconstruction_matrix(HRF_SPMG1, sframe))
   h_ref_shape_canonical <- h_ref_shape_canonical / max(abs(h_ref_shape_canonical))
+## >>>>>>> main
 
-  proj <- project_confounds(Y, X_list, confound_obj)
-  Xp <- proj$X_list
-  Yp <- proj$Y
+  Xp <- design$X_list_proj
+  Yp <- design$Y_proj
+  cond_names <- design$condition_names
 
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
                                 lambda_init = lambda_init,
+##<<<<<<< codex/update-design-object-and-engine-arguments
+                                h_ref_shape_norm = design$h_ref_shape_norm,
+                                R_mat = R_mat,
+                                Phi_recon_matrix = design$Phi_recon_matrix,
+                                h_ref_shape_canonical = design$h_ref_shape_canonical,
+                                ...),
+##=======
                                 Phi_recon_matrix = Phi,
                                 h_ref_shape_canonical = h_ref_shape_canonical,
                                 R_mat = R_mat, ...),
+##>>>>>>> main
     ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
                                      fullXtX_flag = fullXtX,
+##<<<<<<< codex/update-design-object-and-engine-arguments
+                                     h_ref_shape_norm = design$h_ref_shape_norm,
+                                     R_mat = R_mat,
+                                     Phi_recon_matrix = design$Phi_recon_matrix,
+                                     h_ref_shape_canonical = design$h_ref_shape_canonical,
+                                     ...),
+##=======
                                      Phi_recon_matrix = Phi,
                                      h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_mat, ...),
+##>>>>>>> main
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
                            R_mat_eff = R_mat,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
+##<<<<<<< codex/update-design-object-and-engine-arguments
+                           h_ref_shape_norm = design$h_ref_shape_norm,
+                           max_alt = max_alt,
+                           Phi_recon_matrix = design$Phi_recon_matrix,
+                           h_ref_shape_canonical = design$h_ref_shape_canonical,
+                           ...)
+##=======
                            Phi_recon_matrix = Phi,
                            h_ref_shape_canonical = h_ref_shape_canonical,
                            max_alt = max_alt, ...)
+##>>>>>>> main
   )
 
   rownames(fit$beta) <- cond_names
 
+##<<<<<<< codex/update-design-object-and-engine-arguments
+  Phi <- design$Phi_recon_matrix
+##=======
+##>>>>>>> main
   recon_hrf <- Phi %*% fit$h
 
   n <- nrow(Yp)
@@ -154,7 +189,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                            call = match.call(),
                            hrf_basis = hrf_basis,
                            design_info = list(d = design$d,
-                                              k = length(X_list),
+                                              k = design$k,
                                               n = n,
                                               v = v,
                                               fullXtX = fullXtX),

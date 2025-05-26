@@ -25,7 +25,9 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
                           svd_backend = c("base_R"),
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8,
-                          R_mat = NULL) {
+                          R_mat = NULL,
+                          Phi_recon_matrix = NULL,
+                          h_ref_shape_canonical = NULL) {
   svd_backend <- match.arg(svd_backend)
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
