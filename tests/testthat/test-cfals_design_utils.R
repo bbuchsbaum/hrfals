@@ -162,3 +162,7 @@ test_that("deprecated function still works with warning", {
   expect_equal(res$k_conditions, 2)
 })
 
+test_that("defunct create_cfals_design_from_model errors", {
+  expect_error(create_cfals_design_from_model(), "Defunct")
+})
+

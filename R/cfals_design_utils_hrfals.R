@@ -139,71 +139,17 @@ create_cfals_design <- function(fmri_data_obj,
 
 #' Create CFALS Design from fmrireg Model
 #'
-#' Higher-level wrapper that creates CFALS design matrices from a complete
-#' fmrireg model specification. This function leverages fmrireg's design
-#' matrix creation more directly.
+#' @description
+#' This helper previously attempted to build CFALS design matrices directly
+#' from an `fmri_model` object. The approach proved brittle and has been
+#' removed.  Users should instead call [create_cfals_design()] with an
+#' `event_model` and HRF basis.
 #'
-#' @param fmri_model An `fmri_model` object from fmrireg.
-#' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
-#' @param confound_obj Optional confound matrix.
-#' @param target_terms Character vector of event term names to include.
-#'   If NULL, all event terms are used.
-#' @return List with design matrices and metadata for CFALS.
 #' @export
-create_cfals_design_from_model <- function(fmri_model,
-                                          fmri_data_obj,
-                                          confound_obj = NULL,
-                                          target_terms = NULL) {
-  
-  # Extract BOLD data
-  if (inherits(fmri_data_obj, "fmri_dataset")) {
-    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
-  } else if (is.matrix(fmri_data_obj)) {
-    Y_raw <- fmri_data_obj
-  } else {
-    stop("'fmri_data_obj' must be an 'fmri_dataset' or matrix")
-  }
-
-  # Get the full design matrix from fmrireg
-  full_design <- fmrireg::design_matrix(fmri_model)
-  
-  # Extract event model and terms
-  event_model <- fmri_model$event_model
-  event_terms <- fmrireg::terms(event_model)
-  
-  # Filter terms if specified
-  if (!is.null(target_terms)) {
-    event_terms <- event_terms[target_terms]
-    if (length(event_terms) == 0) {
-      stop("No valid target terms found")
-    }
-  }
-  
-  # For now, we'll use the first event term that has an HRF basis
-  # In the future, this could be extended to handle multiple terms
-  hrf_term <- NULL
-  hrf_basis <- NULL
-  
-  for (term_name in names(event_terms)) {
-    term_obj <- event_terms[[term_name]]
-    if (inherits(term_obj, "event_term")) {
-      # Check if this term has an HRF specification
-      # This is a simplified approach - in practice, we'd need to inspect
-      # the term structure more carefully
-      hrf_term <- term_obj
-      # Extract HRF basis from the term (this would need to be implemented
-      # based on the actual fmrireg term structure)
-      break
-    }
-  }
-  
-  if (is.null(hrf_term)) {
-    stop("No event term with HRF basis found in model")
-  }
-  
-  # For now, fall back to the original approach
-  # This would need to be refined based on the actual fmrireg model structure
-  stop("create_cfals_design_from_model not fully implemented yet. Use create_cfals_design instead.")
+create_cfals_design_from_model <- function(...) {
+  .Defunct("create_cfals_design",
+          msg = "'create_cfals_design_from_model' has been removed.\n",
+          package = "hrfals")
 }
 
 #' Legacy function name for backward compatibility
