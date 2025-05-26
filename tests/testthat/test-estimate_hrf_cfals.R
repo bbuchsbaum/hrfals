@@ -68,10 +68,13 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                fullXtX_flag = TRUE,
 ##<<<<<<< codex/update-design-object-and-engine-arguments
                                h_ref_shape_norm = NULL,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+##=======
                                R_mat = diag(prep$d_basis_dim),
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical)
 ##=======
+##>>>>>>> main
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = diag(prep$d_basis_dim))
