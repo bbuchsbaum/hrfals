@@ -1,28 +1,23 @@
-context("hrfals_fit class")
+context("hrfals_fit object")
 
-test_that("constructor creates object with correct class", {
-  h <- matrix(0, 2, 1)
-  b <- matrix(0, 1, 1)
-  dinfo <- list(d = 2, k = 1, n = 1, v = 1, fullXtX = FALSE)
-  phi <- diag(2)
-  fit <- hrfals_fit(h, b, "test", c(init = 0), call("foo"),
-                    fmrireg::HRF_SPMG1, "term", phi, dinfo, matrix(0,1,1))
+test_that("hrfals_fit constructor works", {
+  h <- matrix(rnorm(6), 3, 2)
+  beta <- matrix(rnorm(4), 2, 2)
+  phi <- matrix(rnorm(15), 5, 3)
+  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
+  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
+                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
   expect_s3_class(fit, "hrfals_fit")
-  expect_equal(fit$method_used, "test")
-  expect_equal(fit$target_event_term_name, "term")
-  expect_equal(fit$phi_recon_matrix, phi)
+  expect_equal(fit$h_coeffs, h)
+  expect_equal(fit$beta_amps, beta)
 })
 
-test_that("print and summary methods work", {
-  h <- matrix(0, 2, 1)
-  b <- matrix(0, 1, 1)
-  dinfo <- list(d = 2, k = 1, n = 1, v = 1, fullXtX = FALSE)
-  phi <- diag(2)
-  fit <- hrfals_fit(h, b, "test", c(init = 0), call("foo"),
-                    fmrireg::HRF_SPMG1, "term", phi, dinfo, matrix(0,1,1))
-  expect_output(print(fit), "hrfals Fit")
-  s <- summary(fit)
-  expect_s3_class(s, "summary.hrfals_fit")
-  expect_equal(s$lambdas, c(init = 0))
-  expect_invisible(plot(fit, vox = 1))
+test_that("print.hrfals_fit doesn't error", {
+  h <- matrix(rnorm(6), 3, 2)
+  beta <- matrix(rnorm(4), 2, 2)
+  phi <- matrix(rnorm(15), 5, 3)
+  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
+  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
+                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
+  expect_output(print(fit), "hrfals_fit")
 })

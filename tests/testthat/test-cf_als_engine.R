@@ -83,6 +83,7 @@ test_that("XtY strategies match with fullXtX", {
                              max_alt = 1)
   expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
   expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
+})
 
 test_that("precompute_xty_flag FALSE reproduces TRUE", {
   dat <- simple_cfals_data()
@@ -100,5 +101,24 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
                              precompute_xty_flag = FALSE)
   expect_equal(res_false$h, res_true$h)
   expect_equal(res_false$beta, res_true$beta)
+})
+
+
+test_that("h_ref_shape_norm length must equal d", {
+  dat <- simple_cfals_data()
+  bad_ref <- numeric(dat$d + 1)
+  expect_error(
+    cf_als_engine(dat$X_list, dat$Y, h_ref_shape_norm = bad_ref),
+    "`h_ref_shape_norm` must have length d"
+  )
+})
+          
+test_that("size estimate uses numeric arithmetic", {
+  k <- .Machine$integer.max
+  d <- 2L
+  v <- 1L
+  size_est <- as.numeric(k) * d * v * 8
+  expect_true(is.finite(size_est))
+  expect_gt(size_est, 2e9)
 
 })

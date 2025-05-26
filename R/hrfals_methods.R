@@ -11,6 +11,8 @@
 #' @param fmrireg_hrf_basis_used HRF basis object supplied to the wrapper.
 #' @param design_info List with design metadata (d, k, n, v, fullXtX).
 #' @param residuals Residual matrix from the projected data fit.
+#' @param bad_row_idx Integer vector of time points that were zeroed due to NA
+#'   values.
 #' @param recon_hrf Matrix of reconstructed HRF shapes.
 #' @param gof Numeric vector of goodness-of-fit statistics per voxel.
 #' @return An object of class `hrfals_fit`.
@@ -18,6 +20,7 @@
 hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
                        fmrireg_hrf_basis_used, target_event_term_name,
                        phi_recon_matrix, design_info, residuals,
+                       bad_row_idx = integer(0),
                        recon_hrf = NULL, gof = NULL) {
   out <- list(h_coeffs = h_coeffs,
               beta_amps = beta_amps,
@@ -29,6 +32,7 @@ hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
               phi_recon_matrix = phi_recon_matrix,
               design_info = design_info,
               residuals = residuals,
+              bad_row_idx = bad_row_idx,
               reconstructed_hrfs = recon_hrf,
               gof_per_voxel = gof)
   class(out) <- c("hrfals_fit", "list")

@@ -46,13 +46,22 @@
 #' data after confound projection.
 #'
 #' @examples
-#' sframe <- sampling_frame(blocklens = 40, TR = 1)
-#' ev_df <- data.frame(onset = c(5, 15, 25), block = 1)
-#' emod <- event_model(onset ~ hrf(constant), data = ev_df,
-#'                     block = ~ block, sampling_frame = sframe)
-#' Y <- matrix(rnorm(40 * 2), 40, 2)
-#' fit <- fmrireg_cfals(Y, emod, HRF_SPMG1)
+#' \dontrun{
+#' library(fmrireg)
+#' 
+#' # Create sampling frame and event model
+#' sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
+#' ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
+#' emod <- fmrireg::event_model(onset ~ hrf(cond), data = ev_df, 
+#'                              block = ~ block, sampling_frame = sframe)
+#' 
+#' # Simulate some BOLD data
+#' Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
+#' 
+#' # Fit using CF-ALS with SPMG3 basis (3 basis functions)
+#' fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
 #' print(fit)
+#' }
 #' @export
 fmrireg_cfals <- function(fmri_data_obj,
                          event_model,
@@ -162,7 +171,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' @param event_model An `event_model` describing the stimuli to use
 #'   for HRF estimation.
 #' @param hrf_basis An `HRF` basis object from the `fmrireg` package
-#'   (e.g., `HRF_BSPLINE`, `HRF_TENT`, `HRF_SPMG1`). This determines the
+#'   (e.g., `HRF_BSPLINE`, `HRF_TENT`, `HRF_SPMG3`). This determines the
 #'   set of basis functions used to model the HRF. The CF-ALS method
 #'   can work with any basis where `nbasis > 1`.
 #' @param confound_obj Optional numeric matrix of confound regressors (time
@@ -240,7 +249,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' # Simulate data
 #' sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
 #' ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
-#' emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG1),
+#' emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
 #'                              data = ev_df, block = ~ block,
 #'                              sampling_frame = sframe)
 #' Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
@@ -249,7 +258,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' cfals_fit <- fmrireg_hrf_cfals(
 #'   fmri_data_obj = Y_matrix,
 #'   event_model = emod,
-#'   hrf_basis = fmrireg::HRF_SPMG1, # Using SPMG1 basis
+#'   hrf_basis = fmrireg::HRF_SPMG3, # Using SPMG3 basis (3 basis functions)
 #'   lam_beta = 5,
 #'   lam_h = 0.5,
 #'   max_alt = 1

@@ -1,12 +1,16 @@
 Package: hrfals
 Title: HRF Estimation using Confound-Free Alternating Least Squares
 Version: 0.0.0.9000
-Authors@R: person("Bradley", "Buchsbauhm", email = "bradley.buchsbaum@utoronto.ca", role = c("aut", "cre"))
-Description: Implements the Confound-Free Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data.
+Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@utoronto.ca", role = c("aut", "cre"))
+Description: Implements the Confound-Free Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data. The package provides fast, accurate, and robust alternatives for data-driven HRF estimation that work with any HRF basis from the fmrireg package.
 License: GPL-3
 Encoding: UTF-8
-RoxygenNote: 7.3.1 
+RoxygenNote: 7.3.1
+Depends: 
+    R (>= 3.5.0)
 Imports:
     fmrireg (>= 0.0.0.9000)
 Remotes:
     bbuchsbaum/fmrireg
+URL: https://github.com/bbuchsbaum/hrfals
+BugReports: https://github.com/bbuchsbaum/hrfals/issues

@@ -29,14 +29,18 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
                           h_ref_shape_norm = NULL,
+
                          max_alt = 1,
                          epsilon_svd = 1e-8,
                          epsilon_scale = 1e-8) {
+
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
   d <- ncol(X_list_proj[[1]])
   k <- length(X_list_proj)
+  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
+    stop("`h_ref_shape_norm` must have length d")
   for (X in X_list_proj) {
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
@@ -71,7 +75,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   XtX_list <- lapply(X_list_proj, crossprod)
 
 
-  size_est <- k * d * v * 8
+  size_est <- as.numeric(k) * d * v * 8
   if (precompute_xty_flag && size_est > 2e9) {
     message("Estimated size of XtY_list (", size_est,
             " bytes) is large; consider `precompute_xty_flag = FALSE`")
@@ -94,14 +98,25 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     XtX_full_list <- NULL
   }
 
+  iter_final <- 0
   for (iter in seq_len(max_alt)) {
+    b_prev <- b_current
+    h_prev <- h_current
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
+
+      if (!isTRUE(precompute_xty_flag)) {
+        XtY_cache <- vector("list", k)
+        for (l in seq_len(k)) {
+          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+      }
+
       DhTy_vx <- vapply(seq_len(k), function(c) {
         XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
           XtY_list[[c]][, vx]
         } else {
-          crossprod(X_list_proj[[c]], Y_proj[, vx])
+          XtY_cache[[c]]
         }
         crossprod(h_vx, XtY_c_vx)
 
@@ -123,7 +138,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      R_mat_eff
+      Matrix::forceSymmetric(R_mat_eff)
     }
 
     for (vx in seq_len(v)) {
@@ -135,7 +150,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
         XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
           XtY_list[[l]][, vx]
         } else {
-          crossprod(X_list_proj[[l]], Y_proj[, vx])
+          XtY_cache[[l]]
         }
         rhs <- rhs + b_vx[l] * XtY_l_vx
         if (fullXtX_flag) {
@@ -146,7 +161,13 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           lhs <- lhs + b_vx[l]^2 * XtX_list[[l]]
         }
       }
-      h_current[, vx] <- cholSolve(lhs, rhs)
+    h_current[, vx] <- cholSolve(lhs, rhs)
+    }
+
+    iter_final <- iter
+    if (max(abs(b_current - b_prev)) < 1e-6 &&
+        max(abs(h_current - h_prev)) < 1e-6) {
+      break
     }
   }
 
@@ -165,7 +186,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     b_final[, zero_idx] <- 0
   }
 
-  attr(h_final, "iterations") <- max_alt
+  attr(h_final, "iterations") <- iter_final
   list(h = h_final, beta = b_final)
 }
 

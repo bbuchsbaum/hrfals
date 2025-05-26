@@ -2,7 +2,7 @@
 #'
 #' High level wrapper around the CFALS engines operating on a single
 #' `event_term` within an `fmrireg::event_model`. Design matrices and
-#' projection are handled by `prepare_cfals_inputs_from_fmrireg_term`.
+#' projection are handled by `create_cfals_design`.
 #'
 #' @param fmri_data_obj `fmrireg::fmri_dataset` or numeric BOLD matrix.
 #' @param fmrireg_event_model An `event_model` describing the full design.
@@ -43,13 +43,12 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   method <- match.arg(method)
   penalty_R_mat_type <- match.arg(penalty_R_mat_type)
 
-  prep <- prepare_cfals_inputs_from_fmrireg_term(fmri_data_obj,
-                                                 fmrireg_event_model,
-                                                 target_event_term_name,
-                                                 hrf_basis_for_cfals,
-                                                 confound_obj = confound_obj,
-                                                 hrf_shape_duration_sec = hrf_shape_duration,
-                                                 hrf_shape_sample_res_sec = hrf_shape_resolution)
+  prep <- create_cfals_design(fmri_data_obj,
+                             fmrireg_event_model,
+                             hrf_basis_for_cfals,
+                             confound_obj = confound_obj,
+                             hrf_shape_duration_sec = hrf_shape_duration,
+                             hrf_shape_sample_res_sec = hrf_shape_resolution)
 
   Xp <- prep$X_list_proj
   Yp <- prep$Y_proj
@@ -89,7 +88,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                            max_alt = max_alt)
   )
 
-  rownames(fit$beta) <- prep$target_term_condition_names
+  rownames(fit$beta) <- prep$condition_names
   recon_hrf <- Phi %*% fit$h
 
   pred_p <- Reduce(`+`, Map(function(Xc, bc) {
@@ -113,6 +112,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              phi_recon_matrix = Phi,
              design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX),
              residuals = resids,
+             bad_row_idx = prep$bad_row_idx,
              recon_hrf = recon_hrf,
              gof = r2)
 }
