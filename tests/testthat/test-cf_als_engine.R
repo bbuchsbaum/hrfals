@@ -133,6 +133,17 @@ test_that("h_ref_shape_canonical length must equal p", {
     "`h_ref_shape_canonical` must have length"
   )
 })
+
+test_that("h_ref_shape_canonical must be normalised", {
+  dat <- simple_cfals_data()
+  bad_ref <- dat$href * 2
+  expect_error(
+    cf_als_engine(dat$X_list, dat$Y,
+                  Phi_recon_matrix = dat$Phi,
+                  h_ref_shape_canonical = bad_ref),
+    "must be normalised"
+  )
+})
           
 test_that("size estimate uses numeric arithmetic", {
   k <- .Machine$integer.max

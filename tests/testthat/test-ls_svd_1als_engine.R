@@ -104,3 +104,17 @@ test_that("fullXtX_flag influences estimates when conditions correlate", {
                                  h_ref_shape_canonical = dat$href)
   expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
 })
+
+test_that("ls_svd_1als_engine requires normalised h_ref", {
+  dat <- simple_ls_svd_data()
+  bad_ref <- dat$href * 2
+  expect_error(
+    ls_svd_1als_engine(dat$X_list, dat$Y,
+                       lambda_init = 0,
+                       lambda_b = 0.1,
+                       lambda_h = 0.1,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = bad_ref),
+    "must be normalised"
+  )
+})

@@ -118,7 +118,8 @@ project_confounds <- function(Y, X_list, confounds = NULL, lapack_qr = TRUE) {
 #' metadata such as the number of basis functions and conditions as
 #' well as a reconstruction matrix for converting HRF coefficients to
 #' sampled shapes and a normalised reference HRF vector for sign
-#' alignment.
+#' alignment. The reference HRF is generated using
+#' `fmrireg::HRF_SPMG1` and sampled on the same grid as `Phi`.
 #'
 #' @param event_model An object of class `event_model`.
 #' @param hrf_basis An `HRF` basis object.
@@ -148,8 +149,13 @@ create_fmri_design <- function(event_model, hrf_basis) {
   names(X_list) <- cond_names
 
   Phi <- reconstruction_matrix(hrf_basis, sframe)
-  h_ref <- drop(Phi[, 1])
+  time_points <- seq(0, attr(hrf_basis, "span"), by = sframe$TR[1])
+  h_ref <- fmrireg::evaluate(fmrireg::HRF_SPMG1, time_points)
+  h_ref <- drop(h_ref)
   h_ref <- h_ref / max(abs(h_ref))
+  if (length(h_ref) != nrow(Phi)) {
+    stop("Canonical HRF length does not match Phi reconstruction grid")
+  }
 
   list(X_list = X_list,
        d = nbasis(hrf_basis),

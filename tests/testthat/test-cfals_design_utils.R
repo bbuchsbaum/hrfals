@@ -45,6 +45,8 @@ test_that("create_fmri_design returns expected structure", {
   expect_equal(des$k, length(des$X_list))
   expect_true(is.matrix(des$Phi))
   expect_true(is.numeric(des$h_ref_shape_norm))
+  expect_equal(length(des$h_ref_shape_norm), nrow(des$Phi))
+  expect_equal(max(abs(des$h_ref_shape_norm)), 1)
 })
 
 test_that("create_cfals_design returns expected structure", {
@@ -69,6 +71,8 @@ test_that("create_cfals_design returns expected structure", {
   expect_length(res$X_list_proj, 2)
   expect_true(is.matrix(res$Phi_recon_matrix))
   expect_true(is.numeric(res$h_ref_shape_canonical))
+  expect_equal(length(res$h_ref_shape_canonical), nrow(res$Phi_recon_matrix))
+  expect_equal(max(abs(res$h_ref_shape_canonical)), 1)
   expect_equal(length(res$condition_names), 2)
   
   # Check compatibility fields

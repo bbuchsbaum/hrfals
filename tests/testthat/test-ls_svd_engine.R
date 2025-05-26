@@ -47,3 +47,15 @@ test_that("ls_svd_engine supports custom penalty matrix", {
   Gamma_manual <- solve(XtX + 0.5 * bigR, Xty)
   expect_equal(res$Gamma_hat, Gamma_manual)
 })
+
+test_that("ls_svd_engine requires normalised h_ref", {
+  dat <- simple_ls_svd_data()
+  bad_ref <- dat$href * 2
+  expect_error(
+    ls_svd_engine(dat$X_list, dat$Y,
+                  lambda_init = 0,
+                  Phi_recon_matrix = dat$Phi,
+                  h_ref_shape_canonical = bad_ref),
+    "must be normalised"
+  )
+})

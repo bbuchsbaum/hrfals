@@ -42,6 +42,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
     stop("`Phi_recon_matrix` must be a p x d matrix")
   if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
     stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
+  if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
+    stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
 
   if (!is.null(R_mat)) {
     if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
