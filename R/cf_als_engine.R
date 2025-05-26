@@ -31,11 +31,13 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
+
                           Phi_recon_matrix,
                           h_ref_shape_canonical,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8) {
+
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
