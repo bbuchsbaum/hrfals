@@ -16,7 +16,12 @@
 #' @param penalty_R_mat_type How to construct the penalty matrix. One of
 #'   "identity", "basis_default", or "custom". If "custom", supply `R_mat`.
 #' @param R_mat Optional custom penalty matrix for the h update.
-#' @param fullXtX Logical; passed to the estimation engine.
+#' @param fullXtX Logical. If `TRUE`, the h-update step uses the full
+#'   Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)}
+#'   with cross-condition terms. If `FALSE` (default), the Gramian is
+#'   approximated by omitting cross-condition terms,
+#'   \eqn{\sum_l \beta_l^2 X_l^\top X_l}. A single shared HRF
+#'   coefficient vector is still estimated per voxel.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
 #' @param max_alt Number of alternating updates for `cf_als`.
 #' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.

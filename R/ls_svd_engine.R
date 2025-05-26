@@ -42,17 +42,12 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
   if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
     stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
 
-  cholSolve <- function(M, B, eps = max(epsilon_svd, epsilon_scale)) {
-    L <- tryCatch(chol(M),
-                  error = function(e) chol(M + eps * diag(nrow(M))))
-    backsolve(L, forwardsolve(t(L), B))
-  }
 
   Xbig <- do.call(cbind, X_list_proj)
   XtX  <- crossprod(Xbig)
   Xty  <- crossprod(Xbig, Y_proj)
   XtX_ridge <- XtX + lambda_init * diag(d * k)
-  Gamma_hat <- cholSolve(XtX_ridge, Xty)
+  Gamma_hat <- cholSolve(XtX_ridge, Xty, eps = max(epsilon_svd, epsilon_scale))
 
   H_out <- matrix(0.0, d, v)
   B_out <- matrix(0.0, k, v)
