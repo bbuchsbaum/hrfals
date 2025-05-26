@@ -202,3 +202,28 @@ test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
   }
 })
 
+test_that("penalty_R_mat_type options work", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+
+  fit_basis <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                  HRF_SPMG3,
+                                  lambda_b = 0.1, lambda_h = 0.1,
+                                  penalty_R_mat_type = "basis_default")
+  expect_s3_class(fit_basis, "hrfals_fit")
+
+  Rm <- diag(nbasis(HRF_SPMG3))
+  fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                   HRF_SPMG3,
+                                   lambda_b = 0.1, lambda_h = 0.1,
+                                   penalty_R_mat_type = "custom",
+                                   R_mat = Rm)
+  expect_s3_class(fit_custom, "hrfals_fit")
+
+  expect_error(
+    estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                       lambda_b = 0.1, lambda_h = 0.1,
+                       penalty_R_mat_type = "custom"),
+    "R_mat must be supplied"
+  )
+})
+
