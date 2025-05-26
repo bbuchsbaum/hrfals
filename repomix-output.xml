@@ -68,312 +68,6 @@ DESCRIPTION
 <files>
 This section contains the contents of the repository's files.
 
-<file path="tests/testthat/test-ls_svd_1als_engine.R">
-library(testthat)
-
-context("ls_svd_1als_engine")
-
-simple_ls_svd_data <- function() {
-  set.seed(123)
-  n <- 50
-  d <- 3
-  k <- 2
-  v <- 4
-  h_true <- matrix(rnorm(d * v), d, v)
-  beta_true <- matrix(rnorm(k * v), k, v)
-  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
-  Xbig <- do.call(cbind, X_list)
-  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
-  Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
-}
-
-test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
-  dat <- simple_ls_svd_data()
-  res <- ls_svd_1als_engine(dat$X_list, dat$Y,
-                            lambda_init = 0,
-                            lambda_b = 0.1,
-                            lambda_h = 0.1)
-  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
-  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
-  expect_equal(dim(res$h_ls_svd), c(dat$d, ncol(dat$Y)))
-  expect_equal(dim(res$beta_ls_svd), c(dat$k, ncol(dat$Y)))
-})
-
-single_condition_data <- function() {
-  set.seed(42)
-  n <- 40
-  d <- 2
-  v <- 3
-  X <- matrix(rnorm(n * d), n, d)
-  h_true <- matrix(rnorm(d * v), d, v)
-  b_true <- rnorm(v)
-  Y <- (X %*% h_true) * matrix(rep(b_true, each = n), n, v)
-  list(X_list = list(X), Y = Y)
-}
-
-test_that("fullXtX_flag has no effect for single condition", {
-  dat <- single_condition_data()
-  res_diag <- ls_svd_1als_engine(dat$X_list, dat$Y,
-                                 lambda_init = 0,
-                                 lambda_b = 0.1,
-                                 lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
-  res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
-                                 lambda_init = 0,
-                                 lambda_b = 0.1,
-                                 lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
-  expect_equal(res_diag$h, res_full$h)
-  expect_equal(res_diag$beta, res_full$beta)
-})
-
-correlated_data <- function() {
-  set.seed(99)
-  n <- 40
-  d <- 2
-  k <- 2
-  v <- 2
-  baseX <- matrix(rnorm(n * d), n, d)
-  X_list <- list(baseX, baseX + matrix(rnorm(n * d, sd = 0.2), n, d))
-  h_true <- matrix(rnorm(d * v), d, v)
-  beta_true <- matrix(rnorm(k * v), k, v)
-  Xbig <- do.call(cbind, X_list)
-  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
-  Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y)
-}
-
-test_that("fullXtX_flag influences estimates when conditions correlate", {
-  dat <- correlated_data()
-  res_diag <- ls_svd_1als_engine(dat$X_list, dat$Y,
-                                 lambda_init = 0,
-                                 lambda_b = 0.1,
-                                 lambda_h = 0.1,
-                                 fullXtX_flag = FALSE)
-  res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
-                                 lambda_init = 0,
-                                 lambda_b = 0.1,
-                                 lambda_h = 0.1,
-                                 fullXtX_flag = TRUE)
-  expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
-})
-</file>
-
-<file path="R/cfals_design_utils_hrfals.R">
-#' Convolve timeseries with a single HRF basis function
-#'
-#' Helper that convolves a raw onset vector with the specified basis
-#' function from an HRF object.
-#'
-#' @param raw_timeseries Numeric vector of length n.
-#' @param hrf An object of class `HRF`.
-#' @param basis_function_index Integer index of the basis function.
-#' @param sampling_frame A `sampling_frame` describing the sampling grid.
-#' @return Numeric vector of length n containing the convolved result.
-#' @keywords internal
-convolve_timeseries_with_single_basis <- function(raw_timeseries,
-                                                  hrf,
-                                                  basis_function_index,
-                                                  sampling_frame) {
-  stopifnot(inherits(hrf, "HRF"))
-  nb <- nbasis(hrf)
-  if (basis_function_index < 1 || basis_function_index > nb) {
-    stop("basis_function_index out of range")
-  }
-  grid <- seq(0, attr(hrf, "span"), by = sampling_frame$TR[1])
-  vals <- evaluate(hrf, grid)
-  if (is.vector(vals)) {
-    vals <- matrix(vals, ncol = 1L)
-  }
-  kern <- vals[, basis_function_index]
-  conv_full <- convolve(raw_timeseries, rev(kern), type = "open")
-  conv_full[seq_along(raw_timeseries)]
-}
-
-#' Create CFALS Design Matrices from fmrireg Objects
-#'
-#' This function leverages fmrireg's built-in design matrix creation and
-#' HRF evaluation functionality to prepare inputs for CF-ALS estimation.
-#' It uses the existing `create_fmri_design` function and adds CFALS-specific
-#' processing.
-#'
-#' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
-#' @param event_model An `event_model` object from fmrireg.
-#' @param hrf_basis An HRF basis object with `nbasis > 1`.
-#' @param confound_obj Optional confound matrix.
-#' @param hrf_shape_duration_sec Duration for the HRF reconstruction grid.
-#' @param hrf_shape_sample_res_sec Sampling resolution for the HRF grid.
-#' @return List with projected design matrices, reconstruction info and
-#'   metadata for CFALS engines.
-#' @export
-create_cfals_design <- function(fmri_data_obj,
-                               event_model,
-                               hrf_basis,
-                               confound_obj = NULL,
-                               hrf_shape_duration_sec = attr(hrf_basis, "span"),
-                               hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1]) {
-  
-  # Extract BOLD data matrix
-  if (inherits(fmri_data_obj, "fmri_dataset")) {
-    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
-  } else if (is.matrix(fmri_data_obj)) {
-    Y_raw <- fmri_data_obj
-  } else {
-    stop("'fmri_data_obj' must be an 'fmri_dataset' or matrix")
-  }
-
-  n_timepoints <- nrow(Y_raw)
-  v_voxels <- ncol(Y_raw)
-  
-  # Handle missing data
-  bad_row_idx <- which(apply(Y_raw, 1, function(r) any(is.na(r))))
-  if (length(bad_row_idx) > 0) {
-    Y_raw[bad_row_idx, ] <- 0
-  }
-
-  # Get basis dimensions
-  d_basis_dim <- fmrireg::nbasis(hrf_basis)
-  if (d_basis_dim <= 1) {
-    stop("CF-ALS requires an hrf_basis with nbasis > 1")
-  }
-
-  # Use the existing create_fmri_design function
-  design_info <- create_fmri_design(event_model, hrf_basis)
-  
-  X_list_raw <- design_info$X_list
-  k_conditions <- design_info$k
-  Phi_recon_matrix <- design_info$Phi
-  
-  # Handle missing data in design matrices
-  if (length(bad_row_idx) > 0) {
-    X_list_raw <- lapply(X_list_raw, function(X) {
-      X[bad_row_idx, ] <- 0
-      X
-    })
-  }
-  
-  # Get condition names
-  cond_names <- names(X_list_raw)
-  
-  if (k_conditions == 0) {
-    stop("No estimable conditions found in event model")
-  }
-
-  # Create canonical reference HRF using fmrireg's HRF_SPMG1
-  time_points_for_shape <- seq(0, hrf_shape_duration_sec, by = hrf_shape_sample_res_sec)
-  h_ref_shape_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, time_points_for_shape)
-  h_ref_shape_canonical <- drop(h_ref_shape_canonical)
-  h_ref_shape_canonical <- h_ref_shape_canonical / max(abs(h_ref_shape_canonical))
-
-  # Project out confounds using the existing function
-  proj <- project_confounds(Y_raw, X_list_raw, confound_obj)
-  Y_proj <- proj$Y
-  X_list_proj <- proj$X_list
-
-  # Return comprehensive design information
-  list(
-    Y_proj = Y_proj,
-    X_list_proj = X_list_proj,
-    d_basis_dim = d_basis_dim,
-    k_conditions = k_conditions,
-    Phi_recon_matrix = Phi_recon_matrix,
-    h_ref_shape_canonical = h_ref_shape_canonical,
-    h_ref_shape_norm = design_info$h_ref_shape_norm,
-    n_timepoints = n_timepoints,
-    v_voxels = v_voxels,
-    bad_row_idx = bad_row_idx,
-    condition_names = cond_names,
-    hrf_basis = hrf_basis,
-    event_model = event_model,
-    sampling_frame = event_model$sampling_frame,
-    X_list = X_list_raw,
-    d = d_basis_dim,
-    k = k_conditions,
-    Phi = Phi_recon_matrix
-  )
-}
-
-#' Create CFALS Design from fmrireg Model
-#'
-#' Higher-level wrapper that creates CFALS design matrices from a complete
-#' fmrireg model specification. This function leverages fmrireg's design
-#' matrix creation more directly.
-#'
-#' @param fmri_model An `fmri_model` object from fmrireg.
-#' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
-#' @param confound_obj Optional confound matrix.
-#' @param target_terms Character vector of event term names to include.
-#'   If NULL, all event terms are used.
-#' @return List with design matrices and metadata for CFALS.
-#' @export
-create_cfals_design_from_model <- function(fmri_model,
-                                          fmri_data_obj,
-                                          confound_obj = NULL,
-                                          target_terms = NULL) {
-  
-  # Extract BOLD data
-  if (inherits(fmri_data_obj, "fmri_dataset")) {
-    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
-  } else if (is.matrix(fmri_data_obj)) {
-    Y_raw <- fmri_data_obj
-  } else {
-    stop("'fmri_data_obj' must be an 'fmri_dataset' or matrix")
-  }
-
-  # Get the full design matrix from fmrireg
-  full_design <- fmrireg::design_matrix(fmri_model)
-  
-  # Extract event model and terms
-  event_model <- fmri_model$event_model
-  event_terms <- fmrireg::terms(event_model)
-  
-  # Filter terms if specified
-  if (!is.null(target_terms)) {
-    event_terms <- event_terms[target_terms]
-    if (length(event_terms) == 0) {
-      stop("No valid target terms found")
-    }
-  }
-  
-  # For now, we'll use the first event term that has an HRF basis
-  # In the future, this could be extended to handle multiple terms
-  hrf_term <- NULL
-  hrf_basis <- NULL
-  
-  for (term_name in names(event_terms)) {
-    term_obj <- event_terms[[term_name]]
-    if (inherits(term_obj, "event_term")) {
-      # Check if this term has an HRF specification
-      # This is a simplified approach - in practice, we'd need to inspect
-      # the term structure more carefully
-      hrf_term <- term_obj
-      # Extract HRF basis from the term (this would need to be implemented
-      # based on the actual fmrireg term structure)
-      break
-    }
-  }
-  
-  if (is.null(hrf_term)) {
-    stop("No event term with HRF basis found in model")
-  }
-  
-  # For now, fall back to the original approach
-  # This would need to be refined based on the actual fmrireg model structure
-  stop("create_cfals_design_from_model not fully implemented yet. Use create_cfals_design instead.")
-}
-
-#' Legacy function name for backward compatibility
-#'
-#' @param ... Arguments passed to create_cfals_design
-#' @export
-prepare_cfals_inputs_from_fmrireg_term <- function(...) {
-  .Deprecated("create_cfals_design", 
-              msg = "prepare_cfals_inputs_from_fmrireg_term is deprecated. Use create_cfals_design instead.")
-  create_cfals_design(...)
-}
-</file>
-
 <file path="R/cfals_design_utils.R">
 #' CFALS Design Utilities
 #'
@@ -638,6 +332,226 @@ plot.fmrireg_cfals_fit <- function(x, vox = 1, ...) {
 }
 </file>
 
+<file path="R/cfals_design_utils_hrfals.R">
+#' Convolve timeseries with a single HRF basis function
+#'
+#' Helper that convolves a raw onset vector with the specified basis
+#' function from an HRF object.
+#'
+#' @param raw_timeseries Numeric vector of length n.
+#' @param hrf An object of class `HRF`.
+#' @param basis_function_index Integer index of the basis function.
+#' @param sampling_frame A `sampling_frame` describing the sampling grid.
+#' @return Numeric vector of length n containing the convolved result.
+#' @keywords internal
+convolve_timeseries_with_single_basis <- function(raw_timeseries,
+                                                  hrf,
+                                                  basis_function_index,
+                                                  sampling_frame) {
+  stopifnot(inherits(hrf, "HRF"))
+  nb <- nbasis(hrf)
+  if (basis_function_index < 1 || basis_function_index > nb) {
+    stop("basis_function_index out of range")
+  }
+  grid <- seq(0, attr(hrf, "span"), by = sampling_frame$TR[1])
+  vals <- evaluate(hrf, grid)
+  if (is.vector(vals)) {
+    vals <- matrix(vals, ncol = 1L)
+  }
+  kern <- vals[, basis_function_index]
+  conv_full <- convolve(raw_timeseries, rev(kern), type = "open")
+  conv_full[seq_along(raw_timeseries)]
+}
+
+#' Create CFALS Design Matrices from fmrireg Objects
+#'
+#' This function leverages fmrireg's built-in design matrix creation and
+#' HRF evaluation functionality to prepare inputs for CF-ALS estimation.
+#' It uses the existing `create_fmri_design` function and adds CFALS-specific
+#' processing.
+#'
+#' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
+#' @param event_model An `event_model` object from fmrireg.
+#' @param hrf_basis An HRF basis object with `nbasis > 1`.
+#' @param confound_obj Optional confound matrix.
+#' @param hrf_shape_duration_sec Duration for the HRF reconstruction grid.
+#' @param hrf_shape_sample_res_sec Sampling resolution for the HRF grid.
+#' @return List with projected design matrices, reconstruction info and
+#'   metadata for CFALS engines. Rows of `fmri_data_obj` containing `NA`
+#'   in any voxel are zeroed out along with the corresponding rows in the
+#'   design matrices and `confound_obj` (if provided). The indices of these
+#'   rows are returned as `bad_row_idx`.
+#' @export
+create_cfals_design <- function(fmri_data_obj,
+                               event_model,
+                               hrf_basis,
+                               confound_obj = NULL,
+                               hrf_shape_duration_sec = attr(hrf_basis, "span"),
+                               hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1]) {
+  
+  # Extract BOLD data matrix
+  if (inherits(fmri_data_obj, "fmri_dataset")) {
+    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
+  } else if (is.matrix(fmri_data_obj)) {
+    Y_raw <- fmri_data_obj
+  } else {
+    stop("'fmri_data_obj' must be an 'fmri_dataset' or matrix")
+  }
+
+  n_timepoints <- nrow(Y_raw)
+  v_voxels <- ncol(Y_raw)
+  
+  # Handle missing data
+  bad_row_idx <- which(apply(Y_raw, 1, function(r) any(is.na(r))))
+  if (length(bad_row_idx) > 0) {
+    Y_raw[bad_row_idx, ] <- 0
+    if (!is.null(confound_obj)) {
+      confound_obj[bad_row_idx, ] <- 0
+    }
+  }
+
+  # Get basis dimensions
+  d_basis_dim <- fmrireg::nbasis(hrf_basis)
+  if (d_basis_dim <= 1) {
+    stop("CF-ALS requires an hrf_basis with nbasis > 1")
+  }
+
+  # Use the existing create_fmri_design function
+  design_info <- create_fmri_design(event_model, hrf_basis)
+  
+  X_list_raw <- design_info$X_list
+  k_conditions <- design_info$k
+  Phi_recon_matrix <- design_info$Phi
+  
+  # Handle missing data in design matrices
+  if (length(bad_row_idx) > 0) {
+    X_list_raw <- lapply(X_list_raw, function(X) {
+      X[bad_row_idx, ] <- 0
+      X
+    })
+  }
+  
+  # Get condition names
+  cond_names <- names(X_list_raw)
+  
+  if (k_conditions == 0) {
+    stop("No estimable conditions found in event model")
+  }
+
+  # Create canonical reference HRF using fmrireg's HRF_SPMG1
+  time_points_for_shape <- seq(0, hrf_shape_duration_sec, by = hrf_shape_sample_res_sec)
+  h_ref_shape_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, time_points_for_shape)
+  h_ref_shape_canonical <- drop(h_ref_shape_canonical)
+  h_ref_shape_canonical <- h_ref_shape_canonical / max(abs(h_ref_shape_canonical))
+
+  # Project out confounds using the existing function
+  proj <- project_confounds(Y_raw, X_list_raw, confound_obj)
+  Y_proj <- proj$Y
+  X_list_proj <- proj$X_list
+
+  # Return comprehensive design information
+  list(
+    Y_proj = Y_proj,
+    X_list_proj = X_list_proj,
+    d_basis_dim = d_basis_dim,
+    k_conditions = k_conditions,
+    Phi_recon_matrix = Phi_recon_matrix,
+    h_ref_shape_canonical = h_ref_shape_canonical,
+    h_ref_shape_norm = design_info$h_ref_shape_norm,
+    n_timepoints = n_timepoints,
+    v_voxels = v_voxels,
+    bad_row_idx = bad_row_idx,
+    condition_names = cond_names,
+    hrf_basis = hrf_basis,
+    event_model = event_model,
+    sampling_frame = event_model$sampling_frame,
+    X_list = X_list_raw,
+    d = d_basis_dim,
+    k = k_conditions,
+    Phi = Phi_recon_matrix
+  )
+}
+
+#' Create CFALS Design from fmrireg Model
+#'
+#' Higher-level wrapper that creates CFALS design matrices from a complete
+#' fmrireg model specification. This function leverages fmrireg's design
+#' matrix creation more directly.
+#'
+#' @param fmri_model An `fmri_model` object from fmrireg.
+#' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
+#' @param confound_obj Optional confound matrix.
+#' @param target_terms Character vector of event term names to include.
+#'   If NULL, all event terms are used.
+#' @return List with design matrices and metadata for CFALS.
+#' @export
+create_cfals_design_from_model <- function(fmri_model,
+                                          fmri_data_obj,
+                                          confound_obj = NULL,
+                                          target_terms = NULL) {
+  
+  # Extract BOLD data
+  if (inherits(fmri_data_obj, "fmri_dataset")) {
+    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
+  } else if (is.matrix(fmri_data_obj)) {
+    Y_raw <- fmri_data_obj
+  } else {
+    stop("'fmri_data_obj' must be an 'fmri_dataset' or matrix")
+  }
+
+  # Get the full design matrix from fmrireg
+  full_design <- fmrireg::design_matrix(fmri_model)
+  
+  # Extract event model and terms
+  event_model <- fmri_model$event_model
+  event_terms <- fmrireg::terms(event_model)
+  
+  # Filter terms if specified
+  if (!is.null(target_terms)) {
+    event_terms <- event_terms[target_terms]
+    if (length(event_terms) == 0) {
+      stop("No valid target terms found")
+    }
+  }
+  
+  # For now, we'll use the first event term that has an HRF basis
+  # In the future, this could be extended to handle multiple terms
+  hrf_term <- NULL
+  hrf_basis <- NULL
+  
+  for (term_name in names(event_terms)) {
+    term_obj <- event_terms[[term_name]]
+    if (inherits(term_obj, "event_term")) {
+      # Check if this term has an HRF specification
+      # This is a simplified approach - in practice, we'd need to inspect
+      # the term structure more carefully
+      hrf_term <- term_obj
+      # Extract HRF basis from the term (this would need to be implemented
+      # based on the actual fmrireg term structure)
+      break
+    }
+  }
+  
+  if (is.null(hrf_term)) {
+    stop("No event term with HRF basis found in model")
+  }
+  
+  # For now, fall back to the original approach
+  # This would need to be refined based on the actual fmrireg model structure
+  stop("create_cfals_design_from_model not fully implemented yet. Use create_cfals_design instead.")
+}
+
+#' Legacy function name for backward compatibility
+#'
+#' @param ... Arguments passed to create_cfals_design
+#' @export
+prepare_cfals_inputs_from_fmrireg_term <- function(...) {
+  .Deprecated("create_cfals_design", 
+              msg = "prepare_cfals_inputs_from_fmrireg_term is deprecated. Use create_cfals_design instead.")
+  create_cfals_design(...)
+}
+</file>
+
 <file path="R/hrfals_methods.R">
 #' Construct an `hrfals_fit` object
 #'
@@ -652,6 +566,8 @@ plot.fmrireg_cfals_fit <- function(x, vox = 1, ...) {
 #' @param fmrireg_hrf_basis_used HRF basis object supplied to the wrapper.
 #' @param design_info List with design metadata (d, k, n, v, fullXtX).
 #' @param residuals Residual matrix from the projected data fit.
+#' @param bad_row_idx Integer vector of time points that were zeroed due to NA
+#'   values.
 #' @param recon_hrf Matrix of reconstructed HRF shapes.
 #' @param gof Numeric vector of goodness-of-fit statistics per voxel.
 #' @return An object of class `hrfals_fit`.
@@ -659,6 +575,7 @@ plot.fmrireg_cfals_fit <- function(x, vox = 1, ...) {
 hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
                        fmrireg_hrf_basis_used, target_event_term_name,
                        phi_recon_matrix, design_info, residuals,
+                       bad_row_idx = integer(0),
                        recon_hrf = NULL, gof = NULL) {
   out <- list(h_coeffs = h_coeffs,
               beta_amps = beta_amps,
@@ -670,6 +587,7 @@ hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
               phi_recon_matrix = phi_recon_matrix,
               design_info = design_info,
               residuals = residuals,
+              bad_row_idx = bad_row_idx,
               reconstructed_hrfs = recon_hrf,
               gof_per_voxel = gof)
   class(out) <- c("hrfals_fit", "list")
@@ -712,6 +630,474 @@ plot.hrfals_fit <- function(x, vox = 1, ...) {
 }
 </file>
 
+<file path="tests/testthat/test-hrfals_fit.R">
+context("hrfals_fit object")
+
+test_that("hrfals_fit constructor works", {
+  h <- matrix(rnorm(6), 3, 2)
+  beta <- matrix(rnorm(4), 2, 2)
+  phi <- matrix(rnorm(15), 5, 3)
+  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
+  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
+                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
+  expect_s3_class(fit, "hrfals_fit")
+  expect_equal(fit$h_coeffs, h)
+  expect_equal(fit$beta_amps, beta)
+})
+
+test_that("print.hrfals_fit doesn't error", {
+  h <- matrix(rnorm(6), 3, 2)
+  beta <- matrix(rnorm(4), 2, 2)
+  phi <- matrix(rnorm(15), 5, 3)
+  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
+  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
+                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
+  expect_output(print(fit), "hrfals_fit")
+})
+</file>
+
+<file path="tests/testthat/test-ls_svd_engine.R">
+library(testthat)
+
+context("ls_svd_engine")
+
+simple_ls_svd_data <- function() {
+  set.seed(123)
+  n <- 50
+  d <- 3
+  k <- 2
+  v <- 5
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Xbig <- do.call(cbind, X_list)
+  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
+  Y <- matrix(Y, n, v)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
+}
+
+
+test_that("ls_svd_engine returns matrices with correct dimensions", {
+  dat <- simple_ls_svd_data()
+  res <- ls_svd_engine(dat$X_list, dat$Y,
+                       lambda_init = 0,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href)
+  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
+  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
+  expect_equal(dim(res$Gamma_hat), c(dat$d * dat$k, ncol(dat$Y)))
+})
+
+test_that("ls_svd_engine supports custom penalty matrix", {
+  dat <- simple_ls_svd_data()
+  Rmat <- diag(dat$d) * 2
+  res <- ls_svd_engine(dat$X_list, dat$Y,
+                       lambda_init = 0.5,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       R_mat = Rmat)
+  Xbig <- do.call(cbind, dat$X_list)
+  XtX <- crossprod(Xbig)
+  Xty <- crossprod(Xbig, dat$Y)
+  bigR <- kronecker(diag(dat$k), Rmat)
+  Gamma_manual <- solve(XtX + 0.5 * bigR, Xty)
+  expect_equal(res$Gamma_hat, Gamma_manual)
+})
+</file>
+
+<file path="tests/testthat/test-ls_svd_1als_engine.R">
+library(testthat)
+
+context("ls_svd_1als_engine")
+
+simple_ls_svd_data <- function() {
+  set.seed(123)
+  n <- 50
+  d <- 3
+  k <- 2
+  v <- 4
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Xbig <- do.call(cbind, X_list)
+  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
+  Y <- matrix(Y, n, v)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
+}
+
+test_that("ls_svd_1als_engine returns matrices with correct dimensions", {
+  dat <- simple_ls_svd_data()
+  res <- ls_svd_1als_engine(dat$X_list, dat$Y,
+                            lambda_init = 0,
+                            lambda_b = 0.1,
+                            lambda_h = 0.1,
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href)
+  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
+  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
+  expect_equal(dim(res$h_ls_svd), c(dat$d, ncol(dat$Y)))
+  expect_equal(dim(res$beta_ls_svd), c(dat$k, ncol(dat$Y)))
+})
+
+single_condition_data <- function() {
+  set.seed(42)
+  n <- 40
+  d <- 2
+  v <- 3
+  X <- matrix(rnorm(n * d), n, d)
+  h_true <- matrix(rnorm(d * v), d, v)
+  b_true <- rnorm(v)
+  Y <- (X %*% h_true) * matrix(rep(b_true, each = n), n, v)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = list(X), Y = Y, Phi = phi, href = href)
+}
+
+test_that("fullXtX_flag has no effect for single condition", {
+  dat <- single_condition_data()
+  res_diag <- ls_svd_1als_engine(dat$X_list, dat$Y,
+                                 lambda_init = 0,
+                                 lambda_b = 0.1,
+                                 lambda_h = 0.1,
+                                 fullXtX_flag = FALSE,
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+  res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
+                                 lambda_init = 0,
+                                 lambda_b = 0.1,
+                                 lambda_h = 0.1,
+                                 fullXtX_flag = TRUE,
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+  expect_equal(res_diag$h, res_full$h)
+  expect_equal(res_diag$beta, res_full$beta)
+})
+
+correlated_data <- function() {
+  set.seed(99)
+  n <- 40
+  d <- 2
+  k <- 2
+  v <- 2
+  baseX <- matrix(rnorm(n * d), n, d)
+  X_list <- list(baseX, baseX + matrix(rnorm(n * d, sd = 0.2), n, d))
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  Xbig <- do.call(cbind, X_list)
+  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
+  Y <- matrix(Y, n, v)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Phi = phi, href = href)
+}
+
+test_that("fullXtX_flag influences estimates when conditions correlate", {
+  dat <- correlated_data()
+  res_diag <- ls_svd_1als_engine(dat$X_list, dat$Y,
+                                 lambda_init = 0,
+                                 lambda_b = 0.1,
+                                 lambda_h = 0.1,
+                                 fullXtX_flag = FALSE,
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+  res_full <- ls_svd_1als_engine(dat$X_list, dat$Y,
+                                 lambda_init = 0,
+                                 lambda_b = 0.1,
+                                 lambda_h = 0.1,
+                                 fullXtX_flag = TRUE,
+                                 Phi_recon_matrix = dat$Phi,
+                                 h_ref_shape_canonical = dat$href)
+  expect_false(isTRUE(all.equal(res_diag$h, res_full$h)))
+})
+</file>
+
+<file path="R/ls_svd_engine.R">
+#' LS+SVD Rank-1 HRF Estimation Engine
+#'
+#' Internal helper implementing the LS+SVD algorithm described in
+#' `data-raw/LSS+SVD_proposal.md`. The design matrices should already
+#' be projected to the confound null space.
+#'
+#' @param X_list_proj list of k design matrices (n x d each)
+#' @param Y_proj      numeric matrix of projected BOLD data (n x v)
+#' @param lambda_init ridge penalty for initial GLM solve
+#' @param Phi_recon_matrix Canonical reference HRF shape of length p for
+#'   sign alignment
+#' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
+#'   sign alignment
+#' @param svd_backend currently ignored, placeholder for future backends
+#' @param epsilon_svd tolerance for singular value screening
+#' @param epsilon_scale tolerance for scale in identifiability step
+#' @param R_mat optional penalty matrix for the initial GLM solve
+#' @return list with matrices `h` (d x v), `beta` (k x v) and
+#'         `Gamma_hat` (d*k x v)
+#' @keywords internal
+#' @noRd
+ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
+                          Phi_recon_matrix,
+                          h_ref_shape_canonical,
+                          svd_backend = c("base_R"),
+                          epsilon_svd = 1e-8,
+                          epsilon_scale = 1e-8,
+                          R_mat = NULL) {
+  svd_backend <- match.arg(svd_backend)
+  stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
+  n <- nrow(Y_proj)
+  v <- ncol(Y_proj)
+  d <- ncol(X_list_proj[[1]])
+  k <- length(X_list_proj)
+  for (X in X_list_proj) {
+    if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
+    if (ncol(X) != d) stop("All design matrices must have the same column count")
+  }
+
+  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
+    stop("`Phi_recon_matrix` must be a p x d matrix")
+  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
+    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
+
+  if (!is.null(R_mat)) {
+    if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
+      stop(paste("R_mat must be a", d, "x", d, "matrix"))
+    }
+  }
+
+  cholSolve <- function(M, B, eps = max(epsilon_svd, epsilon_scale)) {
+    L <- tryCatch(chol(M),
+                  error = function(e) chol(M + eps * diag(nrow(M))))
+    backsolve(L, forwardsolve(t(L), B))
+  }
+
+  Xbig <- do.call(cbind, X_list_proj)
+  XtX  <- crossprod(Xbig)
+  Xty  <- crossprod(Xbig, Y_proj)
+  penalty_mat <- if (is.null(R_mat)) diag(d) else R_mat
+  R_big <- kronecker(diag(k), penalty_mat)
+  XtX_ridge <- XtX + lambda_init * R_big
+  Gamma_hat <- cholSolve(XtX_ridge, Xty)
+
+  H_out <- matrix(0.0, d, v)
+  B_out <- matrix(0.0, k, v)
+
+  for (vx in seq_len(v)) {
+    G_vx <- matrix(Gamma_hat[, vx], nrow = d, ncol = k)
+    sv <- svd(G_vx, nu = 1, nv = 1)
+    if (length(sv$d) && sv$d[1] > epsilon_svd) {
+      s1 <- sqrt(sv$d[1])
+      H_out[, vx] <- sv$u[, 1] * s1
+      B_out[, vx] <- sv$v[, 1] * s1
+    }
+  }
+
+  H_shapes <- Phi_recon_matrix %*% H_out
+  scl <- apply(abs(H_shapes), 2, max)
+  flip <- rep(1.0, v)
+  align <- colSums(H_shapes * h_ref_shape_canonical)
+  flip[align < 0 & scl > epsilon_scale] <- -1.0
+  eff_scl <- pmax(scl, epsilon_scale)
+  H_final <- sweep(H_out, 2, flip / eff_scl, "*")
+  B_final <- sweep(B_out, 2, flip * eff_scl, "*")
+  zero_idx <- scl <= epsilon_scale
+  if (any(zero_idx)) {
+    H_final[, zero_idx] <- 0
+    B_final[, zero_idx] <- 0
+  }
+
+  dimnames(H_final) <- list(NULL, colnames(Y_proj))
+  dimnames(B_final) <- list(names(X_list_proj), colnames(Y_proj))
+
+  list(h = H_final, beta = B_final, Gamma_hat = Gamma_hat)
+}
+</file>
+
+<file path="tests/testthat/test-cfals_design_utils.R">
+context("cfals design helpers")
+
+test_that("reconstruction_matrix works", {
+  sf <- sampling_frame(10, TR = 1)
+  phi <- reconstruction_matrix(HRF_SPMG3, sf)
+  expect_equal(ncol(phi), nbasis(HRF_SPMG3))
+  expect_gt(nrow(phi), 1)
+})
+
+test_that("penalty_matrix defaults to identity", {
+  Rm <- penalty_matrix(HRF_SPMG3)
+  expect_equal(Rm, diag(nbasis(HRF_SPMG3)))
+})
+
+test_that("convolve_timeseries_with_single_basis behaves like impulse response", {
+  sf <- sampling_frame(10, TR = 1)
+  raw_ts <- c(1, rep(0, 9))
+  conv <- convolve_timeseries_with_single_basis(raw_ts, HRF_SPMG3, 2, sf)
+  grid <- seq(0, attr(HRF_SPMG3, "span"), by = sf$TR[1])
+  phi <- evaluate(HRF_SPMG3, grid)
+  if (is.vector(phi)) phi <- matrix(phi, ncol = 1L)
+  expect_equal(conv, phi[seq_along(raw_ts), 2])
+})
+
+test_that("project_confounds projects via QR", {
+  X <- matrix(rnorm(20), 5, 4)
+  Y <- matrix(rnorm(10), 5, 2)
+  Z <- matrix(seq_len(5), ncol = 1)
+  res <- project_confounds(Y, list(X), Z)
+  expect_equal(dim(res$X_list[[1]]), dim(X))
+  expect_equal(dim(res$Y), dim(Y))
+})
+
+test_that("create_fmri_design returns expected structure", {
+  sf <- sampling_frame(20, TR = 1)
+  events <- data.frame(onset = c(2, 6, 12),
+                       condition = factor(c("A", "B", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  des <- create_fmri_design(emod, HRF_SPMG3)
+  expect_type(des, "list")
+  expect_equal(length(des$X_list), 2)
+  expect_equal(des$d, nbasis(HRF_SPMG3))
+  expect_equal(des$k, length(des$X_list))
+  expect_true(is.matrix(des$Phi))
+  expect_true(is.numeric(des$h_ref_shape_norm))
+})
+
+test_that("create_cfals_design returns expected structure", {
+  sf <- sampling_frame(20, TR = 1)
+  events <- data.frame(onset = c(2, 6, 12),
+                       condition = factor(c("A", "B", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(20 * 2), 20, 2)
+  Z <- matrix(rnorm(20), ncol = 1)
+  
+  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z,
+                            hrf_shape_duration_sec = 16,
+                            hrf_shape_sample_res_sec = 1)
+  
+  expect_type(res, "list")
+  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
+  expect_equal(res$k_conditions, 2)
+  expect_equal(res$n_timepoints, 20)
+  expect_equal(res$v_voxels, 2)
+  expect_length(res$X_list_proj, 2)
+  expect_true(is.matrix(res$Phi_recon_matrix))
+  expect_true(is.numeric(res$h_ref_shape_canonical))
+  expect_equal(length(res$condition_names), 2)
+  
+  # Check compatibility fields
+  expect_equal(res$d, res$d_basis_dim)
+  expect_equal(res$k, res$k_conditions)
+  expect_equal(res$Phi, res$Phi_recon_matrix)
+  expect_length(res$X_list, 2)
+  expect_true(is.numeric(res$h_ref_shape_norm))
+})
+
+test_that("create_cfals_design zeroes NA rows", {
+  sf <- sampling_frame(10, TR = 1)
+  events <- data.frame(onset = c(1, 5),
+                       condition = factor(c("A", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(10 * 1), 10, 1)
+  Y[3, ] <- NA
+
+  res <- create_cfals_design(Y, emod, HRF_SPMG3)
+  
+  expect_equal(res$bad_row_idx, 3)
+  expect_true(all(res$Y_proj[3, ] == 0))
+  for (Xc in res$X_list_proj) {
+    expect_true(all(Xc[3, ] == 0))
+  }
+})
+
+test_that("create_cfals_design zeroes NA rows with confounds", {
+  sf <- sampling_frame(10, TR = 1)
+  events <- data.frame(onset = c(1, 5),
+                       condition = factor(c("A", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(10 * 1), 10, 1)
+  Y[4, ] <- NA
+  Z <- matrix(rnorm(10), ncol = 1)
+
+  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z)
+
+  expect_equal(res$bad_row_idx, 4)
+  expect_true(all(res$Y_proj[4, ] == 0))
+  for (Xc in res$X_list_proj) {
+    expect_true(all(Xc[4, ] == 0))
+  }
+})
+
+test_that("create_cfals_design works without confounds", {
+  sf <- sampling_frame(15, TR = 1)
+  events <- data.frame(onset = c(2, 8),
+                       condition = factor(c("A", "B")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(15 * 3), 15, 3)
+  
+  res <- create_cfals_design(Y, emod, HRF_SPMG2)
+  
+  expect_type(res, "list")
+  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG2))
+  expect_equal(res$k_conditions, 2)
+  expect_equal(res$n_timepoints, 15)
+  expect_equal(res$v_voxels, 3)
+  expect_length(res$X_list_proj, 2)
+  expect_length(res$condition_names, 2)
+  expect_true(all(c("A", "B") %in% res$condition_names))
+})
+
+test_that("deprecated function still works with warning", {
+  sf <- sampling_frame(20, TR = 1)
+  events <- data.frame(onset = c(2, 6, 12),
+                       condition = factor(c("A", "B", "A")),
+                       block = 1)
+  emod <- event_model(onset ~ hrf(condition), data = events,
+                      block = ~ block, sampling_frame = sf)
+  Y <- matrix(rnorm(20 * 2), 20, 2)
+  
+  expect_warning(
+    res <- prepare_cfals_inputs_from_fmrireg_term(Y, emod, HRF_SPMG3),
+    "deprecated"
+  )
+  
+  expect_type(res, "list")
+  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
+  expect_equal(res$k_conditions, 2)
+})
+</file>
+
+<file path="DESCRIPTION">
+Package: hrfals
+Title: HRF Estimation using Confound-Free Alternating Least Squares
+Version: 0.0.0.9000
+Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@utoronto.ca", role = c("aut", "cre"))
+Description: Implements the Confound-Free Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data. The package provides fast, accurate, and robust alternatives for data-driven HRF estimation that work with any HRF basis from the fmrireg package.
+License: GPL-3
+Encoding: UTF-8
+RoxygenNote: 7.3.1
+Depends: 
+    R (>= 3.5.0)
+Imports:
+    fmrireg (>= 0.0.0.9000),
+    Matrix
+Remotes:
+    bbuchsbaum/fmrireg
+URL: https://github.com/bbuchsbaum/hrfals
+BugReports: https://github.com/bbuchsbaum/hrfals/issues
+</file>
+
 <file path="R/ls_svd_1als_engine.R">
 #' LS+SVD+1ALS Rank-1 HRF Estimation Engine
 #'
@@ -725,7 +1111,10 @@ plot.hrfals_fit <- function(x, vox = 1, ...) {
 #' @param lambda_b ridge penalty for \eqn{\beta}-update
 #' @param lambda_h ridge penalty for \eqn{h}-update
 #' @param fullXtX_flag logical; if TRUE use full cross-terms in h-update
-#' @param h_ref_shape_norm optional reference HRF shape for sign alignment
+#' @param Phi_recon_matrix Reconstruction matrix mapping coefficients to HRF
+#'   shape (p x d)
+#' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
+#'   sign alignment
 #' @param svd_backend backend for SVD in the initialization step
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
@@ -739,7 +1128,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                lambda_b = 10,
                                lambda_h = 1,
                                fullXtX_flag = FALSE,
-                               h_ref_shape_norm = NULL,
+                               Phi_recon_matrix,
+                               h_ref_shape_canonical,
                                svd_backend = c("base_R"),
                                epsilon_svd = 1e-8,
                                epsilon_scale = 1e-8,
@@ -749,8 +1139,10 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
     stop("Lambdas must be non-negative")
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   d <- ncol(X_list_proj[[1]])
-  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
-    stop("`h_ref_shape_norm` must be length d")
+  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
+    stop("`Phi_recon_matrix` must be a p x d matrix")
+  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
+    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
 
   if (!is.null(R_mat)) {
     if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
@@ -765,7 +1157,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
   }
   init <- ls_svd_engine(X_list_proj, Y_proj,
                         lambda_init = lambda_init,
-                        h_ref_shape_norm = h_ref_shape_norm,
+                        Phi_recon_matrix = Phi_recon_matrix,
+                        h_ref_shape_canonical = h_ref_shape_canonical,
                         svd_backend = svd_backend,
                         epsilon_svd = epsilon_svd,
                         epsilon_scale = epsilon_scale)
@@ -831,12 +1224,11 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
     H_als[, vx] <- cholSolve(lhs, rhs)
   }
 
-  scl <- apply(abs(H_als), 2, max)
+  H_shapes_iter <- Phi_recon_matrix %*% H_als
+  scl <- apply(abs(H_shapes_iter), 2, max)
   flip <- rep(1.0, v)
-  if (!is.null(h_ref_shape_norm)) {
-    align <- as.numeric(crossprod(h_ref_shape_norm, H_als))
-    flip[align < 0 & scl > epsilon_scale] <- -1.0
-  }
+  align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
+  flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
   eff_scl <- pmax(scl, epsilon_scale)
   H_final <- sweep(H_als, 2, flip / eff_scl, "*")
   B_final <- sweep(B_als, 2, flip * eff_scl, "*")
@@ -851,99 +1243,6 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
 
   list(h = H_final, beta = B_final,
        h_ls_svd = init$h, beta_ls_svd = init$beta)
-}
-</file>
-
-<file path="R/ls_svd_engine.R">
-#' LS+SVD Rank-1 HRF Estimation Engine
-#'
-#' Internal helper implementing the LS+SVD algorithm described in
-#' `data-raw/LSS+SVD_proposal.md`. The design matrices should already
-#' be projected to the confound null space.
-#'
-#' @param X_list_proj list of k design matrices (n x d each)
-#' @param Y_proj      numeric matrix of projected BOLD data (n x v)
-#' @param lambda_init ridge penalty for initial GLM solve
-#' @param h_ref_shape_norm optional reference HRF shape for sign alignment
-#' @param svd_backend currently ignored, placeholder for future backends
-#' @param epsilon_svd tolerance for singular value screening
-#' @param epsilon_scale tolerance for scale in identifiability step
-#' @param R_mat optional penalty matrix for the initial GLM solve
-#' @return list with matrices `h` (d x v), `beta` (k x v) and
-#'         `Gamma_hat` (d*k x v)
-#' @keywords internal
-#' @noRd
-ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
-                          h_ref_shape_norm = NULL,
-                          svd_backend = c("base_R"),
-                          epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8,
-                          R_mat = NULL) {
-  svd_backend <- match.arg(svd_backend)
-  stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
-  n <- nrow(Y_proj)
-  v <- ncol(Y_proj)
-  d <- ncol(X_list_proj[[1]])
-  k <- length(X_list_proj)
-  for (X in X_list_proj) {
-    if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
-    if (ncol(X) != d) stop("All design matrices must have the same column count")
-  }
-  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
-    stop("`h_ref_shape_norm` must have length d")
-
-  if (!is.null(R_mat)) {
-    if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
-      stop(paste("R_mat must be a", d, "x", d, "matrix"))
-    }
-  }
-
-  cholSolve <- function(M, B, eps = max(epsilon_svd, epsilon_scale)) {
-    L <- tryCatch(chol(M),
-                  error = function(e) chol(M + eps * diag(nrow(M))))
-    backsolve(L, forwardsolve(t(L), B))
-  }
-
-  Xbig <- do.call(cbind, X_list_proj)
-  XtX  <- crossprod(Xbig)
-  Xty  <- crossprod(Xbig, Y_proj)
-  penalty_mat <- if (is.null(R_mat)) diag(d) else R_mat
-  R_big <- kronecker(diag(k), penalty_mat)
-  XtX_ridge <- XtX + lambda_init * R_big
-  Gamma_hat <- cholSolve(XtX_ridge, Xty)
-
-  H_out <- matrix(0.0, d, v)
-  B_out <- matrix(0.0, k, v)
-
-  for (vx in seq_len(v)) {
-    G_vx <- matrix(Gamma_hat[, vx], nrow = d, ncol = k)
-    sv <- svd(G_vx, nu = 1, nv = 1)
-    if (length(sv$d) && sv$d[1] > epsilon_svd) {
-      s1 <- sqrt(sv$d[1])
-      H_out[, vx] <- sv$u[, 1] * s1
-      B_out[, vx] <- sv$v[, 1] * s1
-    }
-  }
-
-  scl <- apply(abs(H_out), 2, max)
-  flip <- rep(1.0, v)
-  if (!is.null(h_ref_shape_norm)) {
-    align <- as.numeric(crossprod(h_ref_shape_norm, H_out))
-    flip[align < 0 & scl > epsilon_scale] <- -1.0
-  }
-  eff_scl <- pmax(scl, epsilon_scale)
-  H_final <- sweep(H_out, 2, flip / eff_scl, "*")
-  B_final <- sweep(B_out, 2, flip * eff_scl, "*")
-  zero_idx <- scl <= epsilon_scale
-  if (any(zero_idx)) {
-    H_final[, zero_idx] <- 0
-    B_final[, zero_idx] <- 0
-  }
-
-  dimnames(H_final) <- list(NULL, colnames(Y_proj))
-  dimnames(B_final) <- list(names(X_list_proj), colnames(Y_proj))
-
-  list(h = H_final, beta = B_final, Gamma_hat = Gamma_hat)
 }
 </file>
 
@@ -991,11 +1290,12 @@ test_that("fmrireg_hrf_cfals works across HRF bases", {
   bases <- list(HRF_SPMG3, hrfspline_generator(nbasis = 4))
   for (b in bases) {
     dat <- simulate_cfals_wrapper_data(b)
+    design <- create_cfals_design(dat$Y, dat$event_model, b)
     fit <- fmrireg_hrf_cfals(dat$Y, dat$event_model, b,
                              lam_beta = 0.1, lam_h = 0.1)
     expect_equal(dim(fit$h_coeffs), c(nbasis(b), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
-    recon <- reconstruction_matrix(b, dat$sframe) %*% fit$h_coeffs
+    recon <- design$Phi_recon_matrix %*% fit$h_coeffs
     expect_true(all(is.finite(recon)))
   }
 })
@@ -1030,7 +1330,9 @@ simple_cfals_data_noise <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v) + matrix(rnorm(n * v, sd = 0.01), n, v)
-  list(X_list = X_list, Y = Y, Xbig = Xbig)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Xbig = Xbig, Phi = phi, href = href)
 }
 
 test_that("cf_als_engine predictions match canonical GLM", {
@@ -1041,6 +1343,8 @@ test_that("cf_als_engine predictions match canonical GLM", {
                        R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
                        precompute_xty_flag = TRUE,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
                        max_alt = 1)
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
@@ -1056,14 +1360,14 @@ test_that("cf_als_engine predictions match canonical GLM", {
 
 test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  design <- create_fmri_design(dat$event_model, HRF_SPMG3)
-  proj <- project_confounds(dat$Y, design$X_list, NULL)
-  direct <- ls_svd_1als_engine(proj$X_list, proj$Y,
+  design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  direct <- ls_svd_1als_engine(design$X_list_proj, design$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-                               h_ref_shape_norm = design$h_ref_shape_norm)
+                               Phi_recon_matrix = design$Phi_recon_matrix,
+                               h_ref_shape_canonical = design$h_ref_shape_canonical)
   wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
                         method = "ls_svd_1als",
                         fullXtX = TRUE,
@@ -1073,193 +1377,26 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
-</file>
 
-<file path="tests/testthat/test-ls_svd_engine.R">
-library(testthat)
-
-context("ls_svd_engine")
-
-simple_ls_svd_data <- function() {
+test_that("fmrireg_cfals predictions match canonical GLM", {
   set.seed(123)
-  n <- 50
-  d <- 3
-  k <- 2
-  v <- 5
-  h_true <- matrix(rnorm(d * v), d, v)
-  beta_true <- matrix(rnorm(k * v), k, v)
-  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
-  Xbig <- do.call(cbind, X_list)
-  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
-  Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
-}
-
-
-test_that("ls_svd_engine returns matrices with correct dimensions", {
-  dat <- simple_ls_svd_data()
-  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0)
-  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
-  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
-  expect_equal(dim(res$Gamma_hat), c(dat$d * dat$k, ncol(dat$Y)))
-})
-
-test_that("ls_svd_engine supports custom penalty matrix", {
-  dat <- simple_ls_svd_data()
-  Rmat <- diag(dat$d) * 2
-  res <- ls_svd_engine(dat$X_list, dat$Y, lambda_init = 0.5, R_mat = Rmat)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                       method = "cf_als",
+                       lambda_b = 0,
+                       lambda_h = 0,
+                       max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
   Xbig <- do.call(cbind, dat$X_list)
-  XtX <- crossprod(Xbig)
-  Xty <- crossprod(Xbig, dat$Y)
-  bigR <- kronecker(diag(dat$k), Rmat)
-  Gamma_manual <- solve(XtX + 0.5 * bigR, Xty)
-  expect_equal(res$Gamma_hat, Gamma_manual)
-})
-</file>
-
-<file path="R/estimate_hrf_cfals.R">
-#' Estimate HRF for a target event term using CF-ALS
-#'
-#' High level wrapper around the CFALS engines operating on a single
-#' `event_term` within an `fmrireg::event_model`. Design matrices and
-#' projection are handled by `create_cfals_design`.
-#'
-#' @param fmri_data_obj `fmrireg::fmri_dataset` or numeric BOLD matrix.
-#' @param fmrireg_event_model An `event_model` describing the full design.
-#' @param target_event_term_name Name of the event_term to estimate.
-#' @param hrf_basis_for_cfals An `HRF` object with `nbasis > 1`.
-#' @param confound_obj Optional confound matrix.
-#' @param method Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").
-#' @param lambda_init Ridge penalty for initial LS solve.
-#' @param lambda_b Ridge penalty for the beta update.
-#' @param lambda_h Ridge penalty for the h update.
-#' @param penalty_R_mat_type How to construct the penalty matrix. One of
-#'   "identity", "basis", or "custom". If "custom", supply `R_mat`.
-#' @param R_mat Optional custom penalty matrix for the h update.
-#' @param fullXtX Logical; passed to the estimation engine.
-#' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
-#' @param max_alt Number of alternating updates for `cf_als`.
-#' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
-#' @param hrf_shape_resolution Sampling resolution of the HRF grid.
-#' @return An `hrfals_fit` object.
-#' @export
-estimate_hrf_cfals <- function(fmri_data_obj,
-                               fmrireg_event_model,
-                               target_event_term_name,
-                               hrf_basis_for_cfals,
-                               confound_obj = NULL,
-                               method = c("ls_svd_1als", "ls_svd_only", "cf_als"),
-                               lambda_init = 1,
-                               lambda_b = 10,
-                               lambda_h = 1,
-                               penalty_R_mat_type = c("identity", "basis", "custom"),
-                               R_mat = NULL,
-                               fullXtX = FALSE,
-                               precompute_xty_flag = TRUE,
-                               max_alt = 1,
-                               hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
-                               hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
-                               ...) {
-  method <- match.arg(method)
-  penalty_R_mat_type <- match.arg(penalty_R_mat_type)
-
-  prep <- create_cfals_design(fmri_data_obj,
-                             fmrireg_event_model,
-                             hrf_basis_for_cfals,
-                             confound_obj = confound_obj,
-                             hrf_shape_duration_sec = hrf_shape_duration,
-                             hrf_shape_sample_res_sec = hrf_shape_resolution)
-
-  Xp <- prep$X_list_proj
-  Yp <- prep$Y_proj
-  d <- prep$d_basis_dim
-  k <- prep$k_conditions
-  Phi <- prep$Phi_recon_matrix
-  n <- prep$n_timepoints
-  v <- prep$v_voxels
-
-  R_eff <- switch(penalty_R_mat_type,
-                  identity = diag(d),
-                  basis = penalty_matrix(hrf_basis_for_cfals),
-                  custom = {
-                    if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
-                    R_mat
-                  })
-
-  fit <- switch(method,
-    ls_svd_only = ls_svd_engine(Xp, Yp,
-                                lambda_init = lambda_init,
-                                h_ref_shape_norm = NULL,
-                                R_mat = R_eff),
-    ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
-                                     lambda_init = lambda_init,
-                                     lambda_b = lambda_b,
-                                     lambda_h = lambda_h,
-                                     fullXtX_flag = fullXtX,
-                                     h_ref_shape_norm = NULL,
-                                     R_mat = R_eff),
-    cf_als = cf_als_engine(Xp, Yp,
-                           lambda_b = lambda_b,
-                           lambda_h = lambda_h,
-                           R_mat_eff = R_eff,
-                           fullXtX_flag = fullXtX,
-                           precompute_xty_flag = precompute_xty_flag,
-                           h_ref_shape_norm = NULL,
-                           max_alt = max_alt)
-  )
-
-  rownames(fit$beta) <- prep$condition_names
-  recon_hrf <- Phi %*% fit$h
-
-  pred_p <- Reduce(`+`, Map(function(Xc, bc) {
-    Xc %*% (fit$h * matrix(bc, nrow = d, ncol = v, byrow = TRUE))
-  }, Xp, asplit(fit$beta, 1)))
-  resids <- Yp - pred_p
-
-  SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
-  SSE <- colSums(resids^2)
-  r2 <- 1 - SSE / SST
-
-  hrfals_fit(h_coeffs = fit$h,
-             beta_amps = fit$beta,
-             method = method,
-             lambdas = c(init = lambda_init,
-                         beta = lambda_b,
-                         h = lambda_h),
-             call = match.call(),
-             fmrireg_hrf_basis_used = hrf_basis_for_cfals,
-             target_event_term_name = target_event_term_name,
-             phi_recon_matrix = Phi,
-             design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX),
-             residuals = resids,
-             recon_hrf = recon_hrf,
-             gof = r2)
-}
-</file>
-
-<file path="tests/testthat/test-hrfals_fit.R">
-context("hrfals_fit object")
-
-test_that("hrfals_fit constructor works", {
-  h <- matrix(rnorm(6), 3, 2)
-  beta <- matrix(rnorm(4), 2, 2)
-  phi <- matrix(rnorm(15), 5, 3)
-  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
-  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
-  expect_s3_class(fit, "hrfals_fit")
-  expect_equal(fit$h_coeffs, h)
-  expect_equal(fit$beta_amps, beta)
-})
-
-test_that("print.hrfals_fit doesn't error", {
-  h <- matrix(rnorm(6), 3, 2)
-  beta <- matrix(rnorm(4), 2, 2)
-  phi <- matrix(rnorm(15), 5, 3)
-  dinfo <- list(d = 3, k = 2, n = 5, v = 2)
-  fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-                    fmrireg::HRF_SPMG3, "term", phi, dinfo, matrix(0,1,1))
-  expect_output(print(fit), "hrfals_fit")
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
 })
 </file>
 
@@ -1360,13 +1497,14 @@ fmrireg_cfals <- function(fmri_data_obj,
     stop("Sampling information could not be determined from input")
   }
 
-  design <- create_fmri_design(event_model, hrf_basis)
-  X_list <- design$X_list
-  cond_names <- names(X_list)
+  design <- create_cfals_design(fmri_data_obj,
+                                event_model,
+                                hrf_basis,
+                                confound_obj = confound_obj)
 
-  proj <- project_confounds(Y, X_list, confound_obj)
-  Xp <- proj$X_list
-  Yp <- proj$Y
+  Xp <- design$X_list_proj
+  Yp <- design$Y_proj
+  cond_names <- design$condition_names
 
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
@@ -1392,14 +1530,18 @@ fmrireg_cfals <- function(fmri_data_obj,
 
   rownames(fit$beta) <- cond_names
 
-  Phi <- design$Phi
+  Phi <- design$Phi_recon_matrix
   recon_hrf <- Phi %*% fit$h
 
   n <- nrow(Yp)
   v <- ncol(Yp)
-  pred_p <- Reduce(`+`, Map(function(Xc, bc) {
-    Xc %*% (fit$h * matrix(bc, nrow = nrow(fit$h), ncol = v, byrow = TRUE))
-  }, Xp, asplit(fit$beta, 1)))
+  k <- length(Xp)
+  d <- nrow(fit$h)
+  pred_p <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    pred_p <- pred_p + (Xp[[c]] %*% fit$h) *
+      matrix(rep(fit$beta[c, ], each = n), n, v)
+  }
   resids <- Yp - pred_p
 
   SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
@@ -1415,7 +1557,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                            call = match.call(),
                            hrf_basis = hrf_basis,
                            design_info = list(d = design$d,
-                                              k = length(X_list),
+                                              k = design$k,
                                               n = n,
                                               v = v,
                                               fullXtX = fullXtX),
@@ -1572,145 +1714,344 @@ fmrireg_hrf_cfals <- function(fmri_data_obj,
 }
 </file>
 
-<file path="tests/testthat/test-cfals_design_utils.R">
-context("cfals design helpers")
+<file path="R/estimate_hrf_cfals.R">
+#' Estimate HRF for a target event term using CF-ALS
+#'
+#' High level wrapper around the CFALS engines operating on a single
+#' `event_term` within an `fmrireg::event_model`. Design matrices and
+#' projection are handled by `create_cfals_design`.
+#'
+#' @param fmri_data_obj `fmrireg::fmri_dataset` or numeric BOLD matrix.
+#' @param fmrireg_event_model An `event_model` describing the full design.
+#' @param target_event_term_name Name of the event_term to estimate.
+#' @param hrf_basis_for_cfals An `HRF` object with `nbasis > 1`.
+#' @param confound_obj Optional confound matrix.
+#' @param method Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").
+#' @param lambda_init Ridge penalty for initial LS solve.
+#' @param lambda_b Ridge penalty for the beta update.
+#' @param lambda_h Ridge penalty for the h update.
+#' @param penalty_R_mat_type How to construct the penalty matrix. One of
+#'   "identity", "basis_default", or "custom". If "custom", supply `R_mat`.
+#' @param R_mat Optional custom penalty matrix for the h update.
+#' @param fullXtX Logical; passed to the estimation engine.
+#' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
+#' @param max_alt Number of alternating updates for `cf_als`.
+#' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
+#' @param hrf_shape_resolution Sampling resolution of the HRF grid.
+#' @return An `hrfals_fit` object.
+#' @export
+estimate_hrf_cfals <- function(fmri_data_obj,
+                               fmrireg_event_model,
+                               target_event_term_name,
+                               hrf_basis_for_cfals,
+                               confound_obj = NULL,
+                               method = c("ls_svd_1als", "ls_svd_only", "cf_als"),
+                               lambda_init = 1,
+                               lambda_b = 10,
+                               lambda_h = 1,
+                               penalty_R_mat_type = c("identity", "basis_default", "custom"),
+                               R_mat = NULL,
+                               fullXtX = FALSE,
+                               precompute_xty_flag = TRUE,
+                               max_alt = 1,
+                               hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
+                               hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
+                               ...) {
+  method <- match.arg(method)
+  penalty_R_mat_type <- match.arg(penalty_R_mat_type)
 
-test_that("reconstruction_matrix works", {
-  sf <- sampling_frame(10, TR = 1)
-  phi <- reconstruction_matrix(HRF_SPMG3, sf)
-  expect_equal(ncol(phi), nbasis(HRF_SPMG3))
-  expect_gt(nrow(phi), 1)
-})
+  prep <- create_cfals_design(fmri_data_obj,
+                             fmrireg_event_model,
+                             hrf_basis_for_cfals,
+                             confound_obj = confound_obj,
+                             hrf_shape_duration_sec = hrf_shape_duration,
+                             hrf_shape_sample_res_sec = hrf_shape_resolution)
 
-test_that("penalty_matrix defaults to identity", {
-  Rm <- penalty_matrix(HRF_SPMG3)
-  expect_equal(Rm, diag(nbasis(HRF_SPMG3)))
-})
+  Xp <- prep$X_list_proj
+  Yp <- prep$Y_proj
+  d <- prep$d_basis_dim
+  k <- prep$k_conditions
+  Phi <- prep$Phi_recon_matrix
+  h_ref_shape_canonical <- prep$h_ref_shape_canonical
+  n <- prep$n_timepoints
+  v <- prep$v_voxels
 
-test_that("convolve_timeseries_with_single_basis behaves like impulse response", {
-  sf <- sampling_frame(10, TR = 1)
-  raw_ts <- c(1, rep(0, 9))
-  conv <- convolve_timeseries_with_single_basis(raw_ts, HRF_SPMG3, 2, sf)
-  grid <- seq(0, attr(HRF_SPMG3, "span"), by = sf$TR[1])
-  phi <- evaluate(HRF_SPMG3, grid)
-  if (is.vector(phi)) phi <- matrix(phi, ncol = 1L)
-  expect_equal(conv, phi[seq_along(raw_ts), 2])
-})
+  R_eff <- switch(penalty_R_mat_type,
+                  identity = diag(d),
+                  basis_default = penalty_matrix(hrf_basis_for_cfals),
+                  custom = {
+                    if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
+                    R_mat
+                  })
 
-test_that("project_confounds projects via QR", {
-  X <- matrix(rnorm(20), 5, 4)
-  Y <- matrix(rnorm(10), 5, 2)
-  Z <- matrix(seq_len(5), ncol = 1)
-  res <- project_confounds(Y, list(X), Z)
-  expect_equal(dim(res$X_list[[1]]), dim(X))
-  expect_equal(dim(res$Y), dim(Y))
-})
-
-test_that("create_fmri_design returns expected structure", {
-  sf <- sampling_frame(20, TR = 1)
-  events <- data.frame(onset = c(2, 6, 12),
-                       condition = factor(c("A", "B", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  des <- create_fmri_design(emod, HRF_SPMG3)
-  expect_type(des, "list")
-  expect_equal(length(des$X_list), 2)
-  expect_equal(des$d, nbasis(HRF_SPMG3))
-  expect_equal(des$k, length(des$X_list))
-  expect_true(is.matrix(des$Phi))
-  expect_true(is.numeric(des$h_ref_shape_norm))
-})
-
-test_that("create_cfals_design returns expected structure", {
-  sf <- sampling_frame(20, TR = 1)
-  events <- data.frame(onset = c(2, 6, 12),
-                       condition = factor(c("A", "B", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  Y <- matrix(rnorm(20 * 2), 20, 2)
-  Z <- matrix(rnorm(20), ncol = 1)
-  
-  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z,
-                            hrf_shape_duration_sec = 16,
-                            hrf_shape_sample_res_sec = 1)
-  
-  expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
-  expect_equal(res$k_conditions, 2)
-  expect_equal(res$n_timepoints, 20)
-  expect_equal(res$v_voxels, 2)
-  expect_length(res$X_list_proj, 2)
-  expect_true(is.matrix(res$Phi_recon_matrix))
-  expect_true(is.numeric(res$h_ref_shape_canonical))
-  expect_equal(length(res$condition_names), 2)
-  
-  # Check compatibility fields
-  expect_equal(res$d, res$d_basis_dim)
-  expect_equal(res$k, res$k_conditions)
-  expect_equal(res$Phi, res$Phi_recon_matrix)
-  expect_length(res$X_list, 2)
-  expect_true(is.numeric(res$h_ref_shape_norm))
-})
-
-test_that("create_cfals_design zeroes NA rows", {
-  sf <- sampling_frame(10, TR = 1)
-  events <- data.frame(onset = c(1, 5),
-                       condition = factor(c("A", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  Y <- matrix(rnorm(10 * 1), 10, 1)
-  Y[3, ] <- NA
-  
-  res <- create_cfals_design(Y, emod, HRF_SPMG3)
-  
-  expect_equal(res$bad_row_idx, 3)
-  expect_true(all(res$Y_proj[3, ] == 0))
-  for (Xc in res$X_list_proj) {
-    expect_true(all(Xc[3, ] == 0))
-  }
-})
-
-test_that("create_cfals_design works without confounds", {
-  sf <- sampling_frame(15, TR = 1)
-  events <- data.frame(onset = c(2, 8),
-                       condition = factor(c("A", "B")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  Y <- matrix(rnorm(15 * 3), 15, 3)
-  
-  res <- create_cfals_design(Y, emod, HRF_SPMG2)
-  
-  expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG2))
-  expect_equal(res$k_conditions, 2)
-  expect_equal(res$n_timepoints, 15)
-  expect_equal(res$v_voxels, 3)
-  expect_length(res$X_list_proj, 2)
-  expect_length(res$condition_names, 2)
-  expect_true(all(c("A", "B") %in% res$condition_names))
-})
-
-test_that("deprecated function still works with warning", {
-  sf <- sampling_frame(20, TR = 1)
-  events <- data.frame(onset = c(2, 6, 12),
-                       condition = factor(c("A", "B", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  Y <- matrix(rnorm(20 * 2), 20, 2)
-  
-  expect_warning(
-    res <- prepare_cfals_inputs_from_fmrireg_term(Y, emod, HRF_SPMG3),
-    "deprecated"
+  fit <- switch(method,
+    ls_svd_only = ls_svd_engine(Xp, Yp,
+                                lambda_init = lambda_init,
+                                Phi_recon_matrix = Phi,
+                                h_ref_shape_canonical = h_ref_shape_canonical,
+                                R_mat = R_eff),
+    ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
+                                     lambda_init = lambda_init,
+                                     lambda_b = lambda_b,
+                                     lambda_h = lambda_h,
+                                     fullXtX_flag = fullXtX,
+                                     Phi_recon_matrix = Phi,
+                                     h_ref_shape_canonical = h_ref_shape_canonical,
+                                     R_mat = R_eff),
+    cf_als = cf_als_engine(Xp, Yp,
+                           lambda_b = lambda_b,
+                           lambda_h = lambda_h,
+                           R_mat_eff = R_eff,
+                           fullXtX_flag = fullXtX,
+                           precompute_xty_flag = precompute_xty_flag,
+                           Phi_recon_matrix = Phi,
+                           h_ref_shape_canonical = h_ref_shape_canonical,
+                           max_alt = max_alt)
   )
-  
-  expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
-  expect_equal(res$k_conditions, 2)
+
+  rownames(fit$beta) <- prep$condition_names
+  recon_hrf <- Phi %*% fit$h
+
+  pred_p <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    pred_p <- pred_p + (Xp[[c]] %*% fit$h) *
+      matrix(rep(fit$beta[c, ], each = n), n, v)
+  }
+  resids <- Yp - pred_p
+
+  SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
+  SSE <- colSums(resids^2)
+  r2 <- 1 - SSE / SST
+
+  hrfals_fit(h_coeffs = fit$h,
+             beta_amps = fit$beta,
+             method = method,
+             lambdas = c(init = lambda_init,
+                         beta = lambda_b,
+                         h = lambda_h),
+             call = match.call(),
+             fmrireg_hrf_basis_used = hrf_basis_for_cfals,
+             target_event_term_name = target_event_term_name,
+             phi_recon_matrix = Phi,
+             design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX),
+             residuals = resids,
+             bad_row_idx = prep$bad_row_idx,
+             recon_hrf = recon_hrf,
+             gof = r2)
+}
+</file>
+
+<file path="tests/testthat/test-cf_als_engine.R">
+context("cf_als_engine")
+
+simple_cfals_data <- function() {
+  set.seed(123)
+  n <- 50
+  d <- 3
+  k <- 2
+  v <- 4
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Xbig <- do.call(cbind, X_list)
+  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
+  Y <- matrix(Y, n, v)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, d = d, k = k,
+       Phi = phi, href = href)
+}
+
+test_that("cf_als_engine returns matrices with correct dimensions", {
+  dat <- simple_cfals_data()
+  res <- cf_als_engine(dat$X_list, dat$Y,
+                       lambda_b = 0.1,
+                       lambda_h = 0.1,
+                       R_mat_eff = NULL,
+                       fullXtX_flag = FALSE,
+                       precompute_xty_flag = TRUE,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       max_alt = 1)
+  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
+  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
+})
+
+
+simple_small_data <- function() {
+  set.seed(42)
+  n <- 20; d <- 2; k <- 2; v <- 2
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Y <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    Y <- Y + (X_list[[c]] %*% h_true) *
+      matrix(rep(beta_true[c, ], each = n), n, v)
+  }
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Phi = phi, href = href)
+}
+
+test_that("XtY strategies give identical results", {
+  dat <- simple_small_data()
+  Rm <- diag(2) * 1.5
+  res_pre <- cf_als_engine(dat$X_list, dat$Y,
+                           lambda_b = 0.1,
+                           lambda_h = 0.2,
+                           R_mat_eff = Rm,
+                           fullXtX_flag = FALSE,
+                           precompute_xty_flag = TRUE,
+                           Phi_recon_matrix = dat$Phi,
+                           h_ref_shape_canonical = dat$href,
+                           max_alt = 1)
+  res_onfly <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             R_mat_eff = Rm,
+                             fullXtX_flag = FALSE,
+                             precompute_xty_flag = FALSE,
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href,
+                             max_alt = 1)
+  expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
+  expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
+})
+
+test_that("XtY strategies match with fullXtX", {
+  dat <- simple_small_data()
+  Rm <- diag(2) * 1.5
+  res_pre <- cf_als_engine(dat$X_list, dat$Y,
+                           lambda_b = 0.1,
+                           lambda_h = 0.2,
+                           R_mat_eff = Rm,
+                           fullXtX_flag = TRUE,
+                           precompute_xty_flag = TRUE,
+                           Phi_recon_matrix = dat$Phi,
+                           h_ref_shape_canonical = dat$href,
+                           max_alt = 1)
+  res_onfly <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             R_mat_eff = Rm,
+                             fullXtX_flag = TRUE,
+                             precompute_xty_flag = FALSE,
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href,
+                             max_alt = 1)
+  expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
+  expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
+})
+
+test_that("precompute_xty_flag FALSE reproduces TRUE", {
+  dat <- simple_cfals_data()
+  res_true <- cf_als_engine(dat$X_list, dat$Y,
+                            lambda_b = 0.1,
+                            lambda_h = 0.1,
+                            fullXtX_flag = FALSE,
+                            max_alt = 1,
+                            precompute_xty_flag = TRUE,
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href)
+  res_false <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX_flag = FALSE,
+                             max_alt = 1,
+                             precompute_xty_flag = FALSE,
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href)
+  expect_equal(res_false$h, res_true$h)
+  expect_equal(res_false$beta, res_true$beta)
+})
+
+
+test_that("h_ref_shape_canonical length must equal p", {
+  dat <- simple_cfals_data()
+  bad_ref <- numeric(nrow(dat$Phi) + 1)
+  expect_error(
+    cf_als_engine(dat$X_list, dat$Y,
+                  Phi_recon_matrix = dat$Phi,
+                  h_ref_shape_canonical = bad_ref),
+    "`h_ref_shape_canonical` must have length"
+  )
+})
+          
+test_that("size estimate uses numeric arithmetic", {
+  k <- .Machine$integer.max
+  d <- 2L
+  v <- 1L
+  size_est <- as.numeric(k) * d * v * 8
+  expect_true(is.finite(size_est))
+  expect_gt(size_est, 2e9)
+
+})
+
+
+
+# Additional multi-voxel test to ensure on-the-fly XtY matches precomputed
+multi_voxel_data <- function() {
+  set.seed(66)
+  n <- 30; d <- 2; k <- 2; v <- 3
+  h_true <- matrix(rnorm(d * v), d, v)
+  beta_true <- matrix(rnorm(k * v), k, v)
+  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+  Y <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    Y <- Y + (X_list[[c]] %*% h_true) *
+      matrix(rep(beta_true[c, ], each = n), n, v)
+  }
+  phi <- diag(2)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Phi = phi, href = href)
+}
+
+test_that("XtY cache recomputed per voxel when precomputing disabled", {
+  dat <- multi_voxel_data()
+  res_true <- cf_als_engine(dat$X_list, dat$Y,
+                            lambda_b = 0.1,
+                            lambda_h = 0.2,
+                            precompute_xty_flag = TRUE,
+                            Phi_recon_matrix = dat$Phi,
+                            h_ref_shape_canonical = dat$href,
+                            max_alt = 1)
+  res_false <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             precompute_xty_flag = FALSE,
+                             Phi_recon_matrix = dat$Phi,
+                             h_ref_shape_canonical = dat$href,
+                             max_alt = 1)
+  expect_equal(res_false$h, res_true$h, tolerance = 1e-12)
+  expect_equal(res_false$beta, res_true$beta, tolerance = 1e-12)
+})
+                   
+test_that("non-symmetric R_mat_eff is forced symmetric", {
+  dat <- simple_small_data()
+  Rm_nonsym <- matrix(c(1, 2, 3, 4), 2, 2)
+  res_nonsym <- cf_als_engine(dat$X_list, dat$Y,
+                              lambda_b = 0.1,
+                              lambda_h = 0.2,
+                              R_mat_eff = Rm_nonsym,
+                              fullXtX_flag = FALSE,
+                              precompute_xty_flag = TRUE,
+                              Phi_recon_matrix = dat$Phi,
+                              h_ref_shape_canonical = dat$href,
+                              max_alt = 1)
+  Rm_sym <- Matrix::forceSymmetric(Rm_nonsym)
+  res_sym <- cf_als_engine(dat$X_list, dat$Y,
+                           lambda_b = 0.1,
+                           lambda_h = 0.2,
+                           R_mat_eff = Rm_sym,
+                           fullXtX_flag = FALSE,
+                           precompute_xty_flag = TRUE,
+                           Phi_recon_matrix = dat$Phi,
+                           h_ref_shape_canonical = dat$href,
+                           max_alt = 1)
+  expect_equal(res_nonsym$h, res_sym$h)
+  expect_equal(res_nonsym$beta, res_sym$beta)
+
 })
 </file>
 
@@ -1766,6 +2107,14 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
   expect_true(is.matrix(fit$phi_recon_matrix))
 })
 
+test_that("estimate_hrf_cfals carries bad_row_idx", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat$Y[4, 1] <- NA
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                            lambda_b = 0.1, lambda_h = 0.1)
+  expect_equal(fit$bad_row_idx, 4)
+})
+
 
 test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
@@ -1775,7 +2124,8 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-                               h_ref_shape_norm = NULL,
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = diag(prep$d_basis_dim))
   wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
                              method = "ls_svd_1als",
@@ -1786,6 +2136,77 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                              penalty_R_mat_type = "identity")
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
+})
+
+
+test_that("estimate_hrf_cfals predictions match canonical GLM", {
+  set.seed(123)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                            HRF_SPMG3,
+                            method = "cf_als",
+                            lambda_b = 0,
+                            lambda_h = 0,
+                            max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
+  Xbig <- do.call(cbind, dat$X_list)
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
+})
+                   
+test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  Rb <- penalty_matrix(HRF_SPMG3)
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical,
+                               R_mat = Rb)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "basis")
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+})
+
+test_that("penalty_R_mat_type 'custom' uses provided matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  R_custom <- diag(prep$d_basis_dim) * 2
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical,
+                               R_mat = R_custom)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "custom",
+                             R_mat = R_custom)
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+
 })
 
 
@@ -1837,151 +2258,30 @@ test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
     }
   }
 })
-</file>
 
-<file path="DESCRIPTION">
-Package: hrfals
-Title: HRF Estimation using Confound-Free Alternating Least Squares
-Version: 0.0.0.9000
-Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@utoronto.ca", role = c("aut", "cre"))
-Description: Implements the Confound-Free Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data. The package provides fast, accurate, and robust alternatives for data-driven HRF estimation that work with any HRF basis from the fmrireg package.
-License: GPL-3
-Encoding: UTF-8
-RoxygenNote: 7.3.1
-Depends: 
-    R (>= 3.5.0)
-Imports:
-    fmrireg (>= 0.0.0.9000)
-Remotes:
-    bbuchsbaum/fmrireg
-URL: https://github.com/bbuchsbaum/hrfals
-BugReports: https://github.com/bbuchsbaum/hrfals/issues
-</file>
+test_that("penalty_R_mat_type options work", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
 
-<file path="tests/testthat/test-cf_als_engine.R">
-context("cf_als_engine")
+  fit_basis <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                  HRF_SPMG3,
+                                  lambda_b = 0.1, lambda_h = 0.1,
+                                  penalty_R_mat_type = "basis_default")
+  expect_s3_class(fit_basis, "hrfals_fit")
 
-simple_cfals_data <- function() {
-  set.seed(123)
-  n <- 50
-  d <- 3
-  k <- 2
-  v <- 4
-  h_true <- matrix(rnorm(d * v), d, v)
-  beta_true <- matrix(rnorm(k * v), k, v)
-  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
-  Xbig <- do.call(cbind, X_list)
-  Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
-  Y <- matrix(Y, n, v)
-  list(X_list = X_list, Y = Y, d = d, k = k)
-}
+  Rm <- diag(nbasis(HRF_SPMG3))
+  fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                   HRF_SPMG3,
+                                   lambda_b = 0.1, lambda_h = 0.1,
+                                   penalty_R_mat_type = "custom",
+                                   R_mat = Rm)
+  expect_s3_class(fit_custom, "hrfals_fit")
 
-test_that("cf_als_engine returns matrices with correct dimensions", {
-  dat <- simple_cfals_data()
-  res <- cf_als_engine(dat$X_list, dat$Y,
-                       lambda_b = 0.1,
-                       lambda_h = 0.1,
-                       R_mat_eff = NULL,
-                       fullXtX_flag = FALSE,
-                       precompute_xty_flag = TRUE,
-                       max_alt = 1)
-  expect_equal(dim(res$h), c(dat$d, ncol(dat$Y)))
-  expect_equal(dim(res$beta), c(dat$k, ncol(dat$Y)))
-})
-
-
-simple_small_data <- function() {
-  set.seed(42)
-  n <- 20; d <- 2; k <- 2; v <- 2
-  h_true <- matrix(rnorm(d * v), d, v)
-  beta_true <- matrix(rnorm(k * v), k, v)
-  X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
-  Y <- matrix(0, n, v)
-  for (c in seq_len(k)) {
-    Y <- Y + (X_list[[c]] %*% h_true) *
-      matrix(rep(beta_true[c, ], each = n), n, v)
-  }
-  list(X_list = X_list, Y = Y)
-}
-
-test_that("XtY strategies give identical results", {
-  dat <- simple_small_data()
-  Rm <- diag(2) * 1.5
-  res_pre <- cf_als_engine(dat$X_list, dat$Y,
-                           lambda_b = 0.1,
-                           lambda_h = 0.2,
-                           R_mat_eff = Rm,
-                           fullXtX_flag = FALSE,
-                           precompute_xty_flag = TRUE,
-                           max_alt = 1)
-  res_onfly <- cf_als_engine(dat$X_list, dat$Y,
-                             lambda_b = 0.1,
-                             lambda_h = 0.2,
-                             R_mat_eff = Rm,
-                             fullXtX_flag = FALSE,
-                             precompute_xty_flag = FALSE,
-                             max_alt = 1)
-  expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
-  expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
-})
-
-test_that("XtY strategies match with fullXtX", {
-  dat <- simple_small_data()
-  Rm <- diag(2) * 1.5
-  res_pre <- cf_als_engine(dat$X_list, dat$Y,
-                           lambda_b = 0.1,
-                           lambda_h = 0.2,
-                           R_mat_eff = Rm,
-                           fullXtX_flag = TRUE,
-                           precompute_xty_flag = TRUE,
-                           max_alt = 1)
-  res_onfly <- cf_als_engine(dat$X_list, dat$Y,
-                             lambda_b = 0.1,
-                             lambda_h = 0.2,
-                             R_mat_eff = Rm,
-                             fullXtX_flag = TRUE,
-                             precompute_xty_flag = FALSE,
-                             max_alt = 1)
-  expect_equal(res_pre$h, res_onfly$h, tolerance = 1e-12)
-  expect_equal(res_pre$beta, res_onfly$beta, tolerance = 1e-12)
-})
-
-test_that("precompute_xty_flag FALSE reproduces TRUE", {
-  dat <- simple_cfals_data()
-  res_true <- cf_als_engine(dat$X_list, dat$Y,
-                            lambda_b = 0.1,
-                            lambda_h = 0.1,
-                            fullXtX_flag = FALSE,
-                            max_alt = 1,
-                            precompute_xty_flag = TRUE)
-  res_false <- cf_als_engine(dat$X_list, dat$Y,
-                             lambda_b = 0.1,
-                             lambda_h = 0.1,
-                             fullXtX_flag = FALSE,
-                             max_alt = 1,
-                             precompute_xty_flag = FALSE)
-  expect_equal(res_false$h, res_true$h)
-  expect_equal(res_false$beta, res_true$beta)
-})
-
-
-test_that("h_ref_shape_norm length must equal d", {
-  dat <- simple_cfals_data()
-  bad_ref <- numeric(dat$d + 1)
   expect_error(
-    cf_als_engine(dat$X_list, dat$Y, h_ref_shape_norm = bad_ref),
-    "`h_ref_shape_norm` must have length d"
+    estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                       lambda_b = 0.1, lambda_h = 0.1,
+                       penalty_R_mat_type = "custom"),
+    "R_mat must be supplied"
   )
-})
-          
-test_that("size estimate uses numeric arithmetic", {
-  k <- .Machine$integer.max
-  d <- 2L
-  v <- 1L
-  size_est <- as.numeric(k) * d * v * 8
-  expect_true(is.finite(size_est))
-  expect_gt(size_est, 2e9)
-
 })
 </file>
 
@@ -2001,7 +2301,9 @@ test_that("size estimate uses numeric arithmetic", {
 #' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
 #' @param precompute_xty_flag logical; if TRUE precompute `XtY_list` otherwise
 #'   compute per voxel on-the-fly
-#' @param h_ref_shape_norm optional reference HRF shape for sign alignment
+#' @param Phi_recon_matrix p x d matrix for sign alignment
+#' @param h_ref_shape_canonical Canonical reference HRF shape of length p for
+#'   sign alignment
 #' @param max_alt number of alternating updates after initialization
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
@@ -2009,6 +2311,7 @@ test_that("size estimate uses numeric arithmetic", {
 #'   matrix `h` has an attribute `"iterations"` recording the number
 #'   of alternating updates performed.
 #' @keywords internal
+#' @importFrom Matrix forceSymmetric
 #' @noRd
 cf_als_engine <- function(X_list_proj, Y_proj,
                           lambda_b = 10,
@@ -2016,17 +2319,21 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
-                          h_ref_shape_norm = NULL,
+                          Phi_recon_matrix,
+                          h_ref_shape_canonical,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8) {
+
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
   d <- ncol(X_list_proj[[1]])
   k <- length(X_list_proj)
-  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
-    stop("`h_ref_shape_norm` must have length d")
+  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
+    stop("`Phi_recon_matrix` must be a p x d matrix")
+  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
+    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
   for (X in X_list_proj) {
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
@@ -2052,7 +2359,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
 
   init <- ls_svd_engine(X_list_proj, Y_proj,
                         lambda_init = 0,
-                        h_ref_shape_norm = h_ref_shape_norm,
+                        Phi_recon_matrix = Phi_recon_matrix,
+                        h_ref_shape_canonical = h_ref_shape_canonical,
                         epsilon_svd = epsilon_svd,
                         epsilon_scale = epsilon_scale)
   h_current <- init$h
@@ -2124,13 +2432,28 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      Matrix::forceSymmetric(R_mat_eff)
+      R_mat_eff
     }
 
     for (vx in seq_len(v)) {
+
+      if (!isTRUE(precompute_xty_flag)) {
+        XtY_cache <- vector("list", k)
+        for (l in seq_len(k)) {
+          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+      }
+
       b_vx <- b_current[, vx]
       lhs <- lambda_h * h_penalty_matrix
       rhs <- numeric(d)
+
+      if (!isTRUE(precompute_xty_flag)) {
+        XtY_cache <- vector("list", k)
+        for (l in seq_len(k)) {
+          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+      }
       for (l in seq_len(k)) {
 
         XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
@@ -2157,12 +2480,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
   }
 
-  scl <- apply(abs(h_current), 2, max)
+  H_shapes_iter <- Phi_recon_matrix %*% h_current
+  scl <- apply(abs(H_shapes_iter), 2, max)
   flip <- rep(1.0, v)
-  if (!is.null(h_ref_shape_norm)) {
-    align <- colSums(h_current * h_ref_shape_norm)
-    flip[align < 0 & scl > epsilon_scale] <- -1.0
-  }
+  align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
+  flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
   eff_scl <- pmax(scl, epsilon_scale)
   h_final <- sweep(h_current, 2, flip / eff_scl, "*")
   b_final <- sweep(b_current, 2, flip * eff_scl, "*")
