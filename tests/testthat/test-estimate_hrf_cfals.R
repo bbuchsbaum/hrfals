@@ -81,6 +81,7 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
 })
 
 
+
 test_that("estimate_hrf_cfals predictions match canonical GLM", {
   set.seed(123)
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
@@ -104,6 +105,7 @@ test_that("estimate_hrf_cfals predictions match canonical GLM", {
 })
                    
 test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
+
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
   prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
   Rb <- penalty_matrix(HRF_SPMG3)
@@ -121,7 +123,7 @@ test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
                              lambda_b = 0.1,
                              lambda_h = 0.1,
                              fullXtX = TRUE,
-                             penalty_R_mat_type = "basis")
+                             penalty_R_mat_type = "basis_default")
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
