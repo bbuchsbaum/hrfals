@@ -23,6 +23,7 @@
 #'   matrix `h` has an attribute `"iterations"` recording the number
 #'   of alternating updates performed.
 #' @keywords internal
+#' @importFrom Matrix forceSymmetric
 #' @noRd
 cf_als_engine <- function(X_list_proj, Y_proj,
                           lambda_b = 10,
