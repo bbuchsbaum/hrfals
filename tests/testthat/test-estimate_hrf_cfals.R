@@ -67,7 +67,11 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
                                h_ref_shape_norm = NULL,
-                               R_mat = diag(prep$d_basis_dim))
+                               R_mat = diag(prep$d_basis_dim),
+                               Phi_recon_matrix = prep$Phi_recon_matrix,
+                               h_ref_shape_canonical = prep$h_ref_shape_canonical)
+
+
   wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,
@@ -77,6 +81,75 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                              penalty_R_mat_type = "identity")
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
+})
+
+
+test_that("estimate_hrf_cfals predictions match canonical GLM", {
+  set.seed(123)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                            HRF_SPMG3,
+                            method = "cf_als",
+                            lambda_b = 0,
+                            lambda_h = 0,
+                            max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
+  Xbig <- do.call(cbind, dat$X_list)
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
+})
+                   
+test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  Rb <- penalty_matrix(HRF_SPMG3)
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               h_ref_shape_norm = NULL,
+                               R_mat = Rb)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "basis")
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+})
+
+test_that("penalty_R_mat_type 'custom' uses provided matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  R_custom <- diag(prep$d_basis_dim) * 2
+  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+                               lambda_init = 0,
+                               lambda_b = 0.1,
+                               lambda_h = 0.1,
+                               fullXtX_flag = TRUE,
+                               h_ref_shape_norm = NULL,
+                               R_mat = R_custom)
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                             method = "ls_svd_1als",
+                             lambda_init = 0,
+                             lambda_b = 0.1,
+                             lambda_h = 0.1,
+                             fullXtX = TRUE,
+                             penalty_R_mat_type = "custom",
+                             R_mat = R_custom)
+  expect_equal(wrap$h_coeffs, direct$h)
+  expect_equal(wrap$beta_amps, direct$beta)
+
 })
 
 
@@ -127,5 +200,30 @@ test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
       expect_equal(fit$target_event_term_name, term)
     }
   }
+})
+
+test_that("penalty_R_mat_type options work", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+
+  fit_basis <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                  HRF_SPMG3,
+                                  lambda_b = 0.1, lambda_h = 0.1,
+                                  penalty_R_mat_type = "basis_default")
+  expect_s3_class(fit_basis, "hrfals_fit")
+
+  Rm <- diag(nbasis(HRF_SPMG3))
+  fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
+                                   HRF_SPMG3,
+                                   lambda_b = 0.1, lambda_h = 0.1,
+                                   penalty_R_mat_type = "custom",
+                                   R_mat = Rm)
+  expect_s3_class(fit_custom, "hrfals_fit")
+
+  expect_error(
+    estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                       lambda_b = 0.1, lambda_h = 0.1,
+                       penalty_R_mat_type = "custom"),
+    "R_mat must be supplied"
+  )
 })
 

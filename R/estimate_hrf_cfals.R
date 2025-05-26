@@ -14,7 +14,7 @@
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param penalty_R_mat_type How to construct the penalty matrix. One of
-#'   "identity", "basis", or "custom". If "custom", supply `R_mat`.
+#'   "identity", "basis_default", or "custom". If "custom", supply `R_mat`.
 #' @param R_mat Optional custom penalty matrix for the h update.
 #' @param fullXtX Logical; passed to the estimation engine.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
@@ -32,7 +32,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                lambda_init = 1,
                                lambda_b = 10,
                                lambda_h = 1,
-                               penalty_R_mat_type = c("identity", "basis", "custom"),
+                               penalty_R_mat_type = c("identity", "basis_default", "custom"),
                                R_mat = NULL,
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
@@ -55,12 +55,13 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   d <- prep$d_basis_dim
   k <- prep$k_conditions
   Phi <- prep$Phi_recon_matrix
+  h_ref_shape_canonical <- prep$h_ref_shape_canonical
   n <- prep$n_timepoints
   v <- prep$v_voxels
 
   R_eff <- switch(penalty_R_mat_type,
                   identity = diag(d),
-                  basis = penalty_matrix(hrf_basis_for_cfals),
+                  basis_default = penalty_matrix(hrf_basis_for_cfals),
                   custom = {
                     if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
                     R_mat
@@ -69,14 +70,16 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
                                 lambda_init = lambda_init,
-                                h_ref_shape_norm = NULL,
+                                Phi_recon_matrix = Phi,
+                                h_ref_shape_canonical = h_ref_shape_canonical,
                                 R_mat = R_eff),
     ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
                                      fullXtX_flag = fullXtX,
-                                     h_ref_shape_norm = NULL,
+                                     Phi_recon_matrix = Phi,
+                                     h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_eff),
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
@@ -84,16 +87,19 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                            R_mat_eff = R_eff,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
-                           h_ref_shape_norm = NULL,
+                           Phi_recon_matrix = Phi,
+                           h_ref_shape_canonical = h_ref_shape_canonical,
                            max_alt = max_alt)
   )
 
   rownames(fit$beta) <- prep$condition_names
   recon_hrf <- Phi %*% fit$h
 
-  pred_p <- Reduce(`+`, Map(function(Xc, bc) {
-    Xc %*% (fit$h * matrix(bc, nrow = d, ncol = v, byrow = TRUE))
-  }, Xp, asplit(fit$beta, 1)))
+  pred_p <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    pred_p <- pred_p + (Xp[[c]] %*% fit$h) *
+      matrix(rep(fit$beta[c, ], each = n), n, v)
+  }
   resids <- Yp - pred_p
 
   SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)

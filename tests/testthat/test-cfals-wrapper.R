@@ -41,11 +41,12 @@ test_that("fmrireg_hrf_cfals works across HRF bases", {
   bases <- list(HRF_SPMG3, hrfspline_generator(nbasis = 4))
   for (b in bases) {
     dat <- simulate_cfals_wrapper_data(b)
+    design <- create_cfals_design(dat$Y, dat$event_model, b)
     fit <- fmrireg_hrf_cfals(dat$Y, dat$event_model, b,
                              lam_beta = 0.1, lam_h = 0.1)
     expect_equal(dim(fit$h_coeffs), c(nbasis(b), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
-    recon <- reconstruction_matrix(b, dat$sframe) %*% fit$h_coeffs
+    recon <- design$Phi_recon_matrix %*% fit$h_coeffs
     expect_true(all(is.finite(recon)))
   }
 })
@@ -80,7 +81,9 @@ simple_cfals_data_noise <- function() {
   Xbig <- do.call(cbind, X_list)
   Y <- Xbig %*% as.vector(matrix(h_true, d, v) %*% t(beta_true))
   Y <- matrix(Y, n, v) + matrix(rnorm(n * v, sd = 0.01), n, v)
-  list(X_list = X_list, Y = Y, Xbig = Xbig)
+  phi <- diag(d)
+  href <- rep(1, nrow(phi))
+  list(X_list = X_list, Y = Y, Xbig = Xbig, Phi = phi, href = href)
 }
 
 test_that("cf_als_engine predictions match canonical GLM", {
@@ -91,7 +94,15 @@ test_that("cf_als_engine predictions match canonical GLM", {
                        R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
                        precompute_xty_flag = TRUE,
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                       max_alt = 1,
+                       Phi_recon_matrix = diag(ncol(dat$X_list[[1]])),
+                       h_ref_shape_canonical = rep(1, ncol(dat$X_list[[1]])))
+##=======
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
                        max_alt = 1)
+##>>>>>>> main
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
   pred_cfals <- matrix(0, n, v)
@@ -106,14 +117,34 @@ test_that("cf_als_engine predictions match canonical GLM", {
 
 test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+##<<<<<<< codex/update-design-object-and-engine-arguments
+  design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  direct <- ls_svd_1als_engine(design$X_list_proj, design$Y_proj,
+##=======
   design <- create_fmri_design(dat$event_model, HRF_SPMG3)
   proj <- project_confounds(dat$Y, design$X_list, NULL)
+  href <- drop(reconstruction_matrix(HRF_SPMG1, dat$sframe))
+  href <- href / max(abs(href))
   direct <- ls_svd_1als_engine(proj$X_list, proj$Y,
+##>>>>>>> main
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
                                fullXtX_flag = TRUE,
-                               h_ref_shape_norm = design$h_ref_shape_norm)
+##<<<<<<< codex/update-unit-and-wrapper-tests
+                               h_ref_shape_norm = design$h_ref_shape_norm,
+                               Phi_recon_matrix = reconstruction_matrix(HRF_SPMG3, dat$sframe),
+                               h_ref_shape_canonical = create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)$h_ref_shape_canonical)
+##=======
+##<<<<<<< codex/update-design-object-and-engine-arguments
+                               h_ref_shape_norm = design$h_ref_shape_norm,
+                               Phi_recon_matrix = design$Phi_recon_matrix,
+                               h_ref_shape_canonical = design$h_ref_shape_canonical)
+##=======
+                               Phi_recon_matrix = design$Phi,
+                               h_ref_shape_canonical = href)
+##>>>>>>> main
+##>>>>>>> main
   wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
                         method = "ls_svd_1als",
                         fullXtX = TRUE,
@@ -122,6 +153,27 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
                         lambda_h = 0.1)
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
+})
+
+test_that("fmrireg_cfals predictions match canonical GLM", {
+  set.seed(123)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                       method = "cf_als",
+                       lambda_b = 0,
+                       lambda_h = 0,
+                       max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
+  Xbig <- do.call(cbind, dat$X_list)
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
 })
 
 

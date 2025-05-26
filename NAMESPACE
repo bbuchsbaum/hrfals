@@ -35,3 +35,11 @@ importFrom(fmrireg,get_data_matrix)
 importFrom(fmrireg,HRF_SPMG1)
 importFrom(fmrireg,nbasis)
 importFrom(stats,convolve)
+
+importFrom(fmrireg, evaluate)
+importFrom(fmrireg, get_data_matrix)
+importFrom(fmrireg, HRF_SPMG1)
+importFrom(fmrireg, nbasis)
+importFrom(stats, convolve)
+importFrom(Matrix, forceSymmetric)
+
