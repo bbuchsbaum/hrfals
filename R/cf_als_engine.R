@@ -15,9 +15,6 @@
 #'   compute per voxel on-the-fly
 #' @param h_ref_shape_norm optional reference HRF shape for sign alignment
 #' @param max_alt number of alternating updates after initialization
-#' @param precompute_xty_flag logical; if `TRUE` pre-compute the cross
-#'   products \code{t(X) \%*\% Y} for each condition.  Set to `FALSE`
-#'   to compute these on the fly and reduce memory usage.
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
 #' @return list with matrices `h` (d x v) and `beta` (k x v). The
@@ -33,7 +30,6 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           precompute_xty_flag = TRUE,
                           h_ref_shape_norm = NULL,
                          max_alt = 1,
-                         precompute_xty_flag = TRUE,
                          epsilon_svd = 1e-8,
                          epsilon_scale = 1e-8) {
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
