@@ -29,9 +29,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
                           h_ref_shape_norm = NULL,
-                          max_alt = 1,
-                          epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8) {
+
+                         max_alt = 1,
+                         epsilon_svd = 1e-8,
+                         epsilon_scale = 1e-8) {
+
   stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
   n <- nrow(Y_proj)
   v <- ncol(Y_proj)
