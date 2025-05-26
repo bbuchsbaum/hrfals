@@ -102,3 +102,12 @@ test_that("precompute_xty_flag FALSE reproduces TRUE", {
   expect_equal(res_false$beta, res_true$beta)
 
 })
+
+test_that("h_ref_shape_norm length must equal d", {
+  dat <- simple_cfals_data()
+  bad_ref <- numeric(dat$d + 1)
+  expect_error(
+    cf_als_engine(dat$X_list, dat$Y, h_ref_shape_norm = bad_ref),
+    "`h_ref_shape_norm` must have length d"
+  )
+})

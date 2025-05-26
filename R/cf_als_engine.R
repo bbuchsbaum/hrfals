@@ -41,6 +41,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   v <- ncol(Y_proj)
   d <- ncol(X_list_proj[[1]])
   k <- length(X_list_proj)
+  if (!is.null(h_ref_shape_norm) && length(h_ref_shape_norm) != d)
+    stop("`h_ref_shape_norm` must have length d")
   for (X in X_list_proj) {
     if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
     if (ncol(X) != d) stop("All design matrices must have the same column count")
