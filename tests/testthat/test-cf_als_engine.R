@@ -209,3 +209,25 @@ test_that("non-symmetric R_mat_eff is forced symmetric", {
   expect_equal(res_nonsym$beta, res_sym$beta)
 
 })
+
+test_that("symmetric Matrix penalty produces expected result", {
+  dat <- simple_small_data()
+  Rm_dense <- diag(2) * 1.5
+  Rm_sym <- Matrix::forceSymmetric(Rm_dense)
+  res_sym <- cf_als_engine(dat$X_list, dat$Y,
+                           lambda_b = 0.1,
+                           lambda_h = 0.2,
+                           R_mat_eff = Rm_sym,
+                           fullXtX_flag = FALSE,
+                           precompute_xty_flag = TRUE,
+                           max_alt = 1)
+  res_dense <- cf_als_engine(dat$X_list, dat$Y,
+                             lambda_b = 0.1,
+                             lambda_h = 0.2,
+                             R_mat_eff = Rm_dense,
+                             fullXtX_flag = FALSE,
+                             precompute_xty_flag = TRUE,
+                             max_alt = 1)
+  expect_equal(res_sym$h, res_dense$h)
+  expect_equal(res_sym$beta, res_dense$beta)
+})
