@@ -8,8 +8,11 @@
 #' @param Y_proj numeric matrix of projected BOLD data (n x v)
 #' @param lambda_b ridge penalty for beta-update
 #' @param lambda_h ridge penalty for h-update
-#' @param R_mat optional d x d penalty matrix for h-update (defaults to identity if NULL)
+#' @param R_mat_eff effective d x d penalty matrix for h-update. If NULL a
+#'   diagonal matrix is used.
 #' @param fullXtX_flag logical; if TRUE use cross-condition terms in h-update
+#' @param precompute_xty_flag logical; if TRUE precompute `XtY_list` otherwise
+#'   compute per voxel on-the-fly
 #' @param h_ref_shape_norm optional reference HRF shape for sign alignment
 #' @param max_alt number of alternating updates after initialization
 #' @param epsilon_svd tolerance for singular value screening
@@ -22,8 +25,9 @@
 cf_als_engine <- function(X_list_proj, Y_proj,
                           lambda_b = 10,
                           lambda_h = 1,
-                          R_mat = NULL,
+                          R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
+                          precompute_xty_flag = TRUE,
                           h_ref_shape_norm = NULL,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
@@ -41,9 +45,9 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     stop("lambda_b and lambda_h must be non-negative")
   }
 
-  if (!is.null(R_mat)) {
-    if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
-      stop(paste("R_mat must be a d x d matrix, where d is", d))
+  if (!is.null(R_mat_eff)) {
+    if (!is.matrix(R_mat_eff) || nrow(R_mat_eff) != d || ncol(R_mat_eff) != d) {
+      stop(paste("R_mat_eff must be a d x d matrix, where d is", d))
     }
   }
 
@@ -65,7 +69,10 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   b_current <- init$beta
 
   XtX_list <- lapply(X_list_proj, crossprod)
-  XtY_list <- lapply(X_list_proj, function(X) crossprod(X, Y_proj))
+  XtY_list <- NULL
+  if (isTRUE(precompute_xty_flag)) {
+    XtY_list <- lapply(X_list_proj, function(X) crossprod(X, Y_proj))
+  }
 
   if (fullXtX_flag) {
     XtX_full_list <- matrix(vector("list", k * k), k, k)
@@ -81,8 +88,14 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   for (iter in seq_len(max_alt)) {
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
-      DhTy_vx <- vapply(seq_len(k), function(c)
-        crossprod(h_vx, XtY_list[[c]][, vx]), numeric(1))
+      DhTy_vx <- vapply(seq_len(k), function(c) {
+        XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
+          XtY_list[[c]][, vx]
+        } else {
+          crossprod(X_list_proj[[c]], Y_proj[, vx])
+        }
+        crossprod(h_vx, XtY_c_vx)
+      }, numeric(1))
       G_vx <- matrix(0.0, k, k)
       for (l in seq_len(k)) {
         if (fullXtX_flag) {
@@ -97,18 +110,23 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx)
     }
 
-    h_penalty_matrix <- if (is.null(R_mat)) {
+    h_penalty_matrix <- if (is.null(R_mat_eff)) {
       diag(d)
     } else {
-      R_mat
+      R_mat_eff
     }
 
     for (vx in seq_len(v)) {
       b_vx <- b_current[, vx]
-      lhs <- lambda_h * h_penalty_matrix 
+      lhs <- lambda_h * h_penalty_matrix
       rhs <- numeric(d)
       for (l in seq_len(k)) {
-        rhs <- rhs + b_vx[l] * XtY_list[[l]][, vx]
+        XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
+          XtY_list[[l]][, vx]
+        } else {
+          crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+        rhs <- rhs + b_vx[l] * XtY_l_vx
         if (fullXtX_flag) {
           for (m in seq_len(k)) {
             lhs <- lhs + b_vx[l] * b_vx[m] * XtX_full_list[[l, m]]

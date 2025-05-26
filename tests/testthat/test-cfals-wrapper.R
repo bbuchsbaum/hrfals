@@ -88,7 +88,9 @@ test_that("cf_als_engine predictions match canonical GLM", {
   res <- cf_als_engine(dat$X_list, dat$Y,
                        lambda_b = 0,
                        lambda_h = 0,
+                       R_mat_eff = NULL,
                        fullXtX_flag = FALSE,
+                       precompute_xty_flag = TRUE,
                        max_alt = 1)
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
