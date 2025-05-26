@@ -102,14 +102,111 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
 
 **Sprint 1: Refactor `ls_svd_engine` in `hrfals` (No change from previous sprint plan `CFALS-R2.1-S1-T1`, `CFALS-R2.1-S1-T2`)**
 
-**Sprint 2: Refactor Iterative `cf_als_engine` in `hrfals`**
-*   **`HRFALS-V2.1-S2-T1`: Refactor `cf_als_engine_r` - Precomputation & `XtY` Strategy.** (As before)
-*   **`HRFALS-V2.1-S2-T2`: Refactor `cf_als_engine_r` - β and h Update Loops:**
-    *   `R_mat_eff` is `diag(d)` or user-supplied `R_mat`.
-    *   **DoD:** ALS updates correct.
-*   **`HRFALS-V2.1-S2-T3`: Refactor `cf_als_engine_r` - Convergence & Final Identifiability (on Shapes).**
-*   **`HRFALS-V2.1-S2-T4`: Refactor `ls_svd_1als_engine_r`.**
-    *   **DoD:** All R engines refactored and unit-tested.
+Ticket CFALS-R2.1-S2-T1: Refactor cf_als_engine - Precomputation & XtY Strategy
+Current State (from repomix-output.xml R/cf_als_engine.R):
+Precomputes XtX_list = lapply(X_list_proj, crossprod).
+Precomputes XtY_list = lapply(X_list_proj, function(X) crossprod(X, Y_proj)). This creates k matrices, each d x v.
+If fullXtX_flag, precomputes XtX_full_list (all X_lᵀX_m).
+Task Details:
+Modify cf_als_engine_r Signature:
+Add a new argument precompute_xty_flag (boolean, default TRUE).
+The inputs X_list_proj (k list of n x d matrices) and Y_proj (n x v matrix) are received from the calling wrapper (e.g., hrfals::estimate_hrf_cfals via prepare_cfals_inputs_from_fmrireg_term).
+Implement XtY Strategy based on precompute_xty_flag:
+If precompute_xty_flag = TRUE (Default):
+Retain the current logic: XtY_list = lapply(X_list_proj, function(X) crossprod(X, Y_proj)).
+Memory Warning (New): Calculate the approximate size of XtY_list (e.g., k_conditions * d_basis_dim * v_voxels * 8 bytes). If it exceeds a threshold (e.g., 1-2 GB, configurable or hardcoded with a message), print a message() suggesting precompute_xty_flag = FALSE for large datasets.
+If precompute_xty_flag = FALSE:
+Do not compute the full XtY_list.
+The per-voxel loops for β-update and h-update (in subsequent tickets) will need to compute XtY_vx (a d x 1 vector for the current voxel vx for each condition c: crossprod(X_list_proj[[c]], Y_proj[,vx])) on the fly.
+Precomputation of XtX terms:
+Maintain precomputation of XtX_list (list of k d x d matrices: X_cᵀX_c).
+Maintain precomputation of XtX_full_list (list of k x k d x d matrices: X_lᵀX_m) if fullXtX_flag = TRUE.
+Inputs to this specific ticket's refactored part (within cf_als_engine_r): X_list_proj, Y_proj, d_basis_dim, k_conditions, v_voxels, fullXtX_flag, precompute_xty_flag.
+Outputs from this specific ticket's refactored part: XtX_list, XtX_full_list (if applicable), and either full XtY_list or just the components needed for on-the-fly calculation (X_list_proj, Y_proj passed through).
+Definition of Done:
+cf_als_engine_r correctly implements both XtY precomputation strategies.
+Memory warning for full XtY_list precomputation is implemented.
+XtX terms are precomputed as before.
+Unit tests verify both XtY strategies (e.g., by checking intermediate values are the same if computed on-the-fly vs. precomputed for a small case).
+Ticket CFALS-R2.1-S2-T2: Refactor cf_als_engine - β and h Update Loops
+Current State (from R/cf_als_engine.R):
+Per-voxel R loops for β and h updates.
+β-update forms G_vx (k x k) and solves.
+h-update forms lhs_vx (d x d) and rhs_vx (d x 1), solves. lambda_h currently applies to an identity matrix if R_mat is NULL.
+Task Details:
+Modify cf_als_engine_r Signature:
+Accept R_mat_eff (a d x d penalty matrix, e.g., diag(d_basis_dim) for ridge, or a custom smoothness matrix). This is passed from hrfals::estimate_hrf_cfals.
+Refactor Per-Voxel β-update Loop:
+Iterate vx from 1 to v_voxels.
+h_vx = H_current[,vx].
+XtY_vx Handling:
+If precompute_xty_flag = TRUE: XtY_c_vx = XtY_list[[c]][,vx].
+If precompute_xty_flag = FALSE: XtY_c_vx = crossprod(X_list_proj[[c]], Y_proj[,vx]).
+DhTy_vx = vapply(seq_len(k_conditions), function(c) crossprod(h_vx, XtY_c_vx_for_condition_c), numeric(1)).
+Form G_beta_matrix_vx (k x k) using h_vx, XtX_list, XtX_full_list (if fullXtX_flag), correctly as per reviewed C++ sketch (i.e., G_vx[l,m] = h_vxᵀ (X_lᵀX_m) h_vx).
+Solve (G_beta_matrix_vx + lambda_b * diag(k_conditions)) β = DhTy_vx for B_current[,vx], using robust_chol_solve.
+Refactor Per-Voxel h-update Loop:
+Iterate vx from 1 to v_voxels.
+b_vx = B_current[,vx].
+XtY_vx Handling: (Same as in β-update).
+rhs_h_vx = numeric(d_basis_dim). Loop l from 1:k_conditions, rhs_h_vx = rhs_h_vx + b_vx[l] * XtY_l_vx_for_condition_l.
+lhs_h_matrix_vx = lambda_h * R_mat_eff. (Note: lambda_h is now a scalar multiplier for the entire R_mat_eff).
+Loop l from 1:k_conditions (and m if fullXtX_flag):
+lhs_h_matrix_vx = lhs_h_matrix_vx + b_vx[l]*b_vx[m]* (if fullXtX XtX_full_list[[l,m]] else if l==m XtX_list[[l]] else 0_matrix).
+Solve lhs_h_matrix_vx h = rhs_h_vx for H_current[,vx], using robust_chol_solve.
+Definition of Done:
+β-update and h-update loops correctly implemented in R.
+Both XtY strategies (precompute_xty_flag = TRUE/FALSE) are functional within the loops.
+R_mat_eff is correctly incorporated into the h-update.
+Unit tests verify the correctness of a single β and h update step for a small case, with and without fullXtX_flag, and with a non-identity R_mat_eff.
+Ticket CFALS-R2.1-S2-T3: Refactor cf_als_engine - Convergence & Final Identifiability (on Shapes)
+Current State (from R/cf_als_engine.R):
+ALS loop runs for fixed max_alt iterations. No explicit convergence check within the loop.
+Final identifiability operates on h_current (coefficients) using a d-dimensional h_ref_shape_norm.
+Task Details:
+Modify cf_als_engine_r Signature:
+Accept Phi_recon_matrix (p x d) and h_ref_shape_canonical_p_dim (p x 1) from prepare_cfals_inputs_from_fmrireg_term.
+Accept tol_als (convergence tolerance).
+Implement Convergence Check within ALS Loop:
+Inside the iter_als loop (after h-update):
+Calculate max_abs_diff_B = max(abs(B_current - B_old)).
+Calculate max_abs_diff_H = max(abs(H_current - H_old)).
+If max_abs_diff_B < tol_als * (1 + max(abs(B_old))) AND max_abs_diff_H < tol_als * (1 + max(abs(H_old))), then break the loop.
+Store iterations_run = iter_als.
+Implement Final Identifiability (on Reconstructed Shapes):
+After the ALS loop (or if max_alt = 0, applied to H_init, B_init):
+H_to_constrain = H_current, B_to_constrain = B_current.
+reconstructed_H_iter = Phi_recon_matrix %*% H_to_constrain (p x v).
+scl_factors = apply(abs(reconstructed_H_iter), 2, max).
+alignment_scores = colSums(reconstructed_H_iter * h_ref_shape_canonical_p_dim).
+Determine flip_signs.
+effective_scl = pmax(scl_factors, epsilon_scale).
+H_final = sweep(H_to_constrain, MARGIN = 2, STATS = flip_signs / effective_scl, FUN = "*").
+B_final = sweep(B_to_constrain, MARGIN = 2, STATS = flip_signs * effective_scl, FUN = "*").
+Zero out H_final and B_final columns where scl_factors was negligible.
+Return Values:
+list(h_coeffs=H_final, beta_amps=B_final, iterations_run=iterations_run, reconstructed_hrfs=Phi_recon_matrix %*% H_final).
+Definition of Done:
+ALS loop includes a robust convergence check.
+Final identifiability is performed on reconstructed HRF shapes using Phi_recon_matrix.
+Engine returns all specified outputs.
+Unit tests verify convergence behavior and identifiability with a non-FIR basis (where Phi_recon_matrix is not identity).
+Ticket CFALS-R2.1-S2-T4: Refactor ls_svd_1als_engine_r
+Current State (from R/ls_svd_1als_engine.R):
+Calls old ls_svd_engine.
+Re-implements one iteration of β and h updates (similar to cf_als_engine but for one pass).
+Performs its own identifiability.
+Task Details:
+Modify ls_svd_1als_engine_r to be a thin wrapper:
+Call the (now refactored) ls_svd_engine_r to get H_init, B_init, and Gamma_hat.
+Call the (now refactored) cf_als_engine_r with H_init, B_init, relevant parameters (lambdas, flags, Phi_recon_matrix, h_ref_shape_canonical_p_dim), and crucially, max_als_iter = 1.
+The final identifiability is now handled inside cf_als_engine_r.
+Return Values:
+list(h=fit_cf_als$h_coeffs, beta=fit_cf_als$beta_amps, reconstructed_hrfs=fit_cf_als$reconstructed_hrfs, h_ls_svd=H_init, beta_ls_svd=B_init, iterations_run_als=fit_cf_als$iterations_run).
+Definition of Done:
+ls_svd_1als_engine_r correctly uses the refactored ls_svd_engine_r and cf_als_engine_r.
+Its output structure is consistent.
+Passes tests ensuring it's equivalent to cf_als_engine_r with max_alt=1.
 
 **Sprint 3: Top-Level Wrapper & Full `fmrireg` Integration Testing**
 *   **`HRFALS-V2.1-S3-T1`: Implement `hrfals::estimate_hrf_cfals` User-Facing Wrapper:**
