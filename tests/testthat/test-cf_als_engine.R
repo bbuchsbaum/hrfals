@@ -122,3 +122,25 @@ test_that("size estimate uses numeric arithmetic", {
   expect_gt(size_est, 2e9)
 
 })
+
+test_that("non-symmetric R_mat_eff is forced symmetric", {
+  dat <- simple_small_data()
+  Rm_nonsym <- matrix(c(1, 2, 3, 4), 2, 2)
+  res_nonsym <- cf_als_engine(dat$X_list, dat$Y,
+                              lambda_b = 0.1,
+                              lambda_h = 0.2,
+                              R_mat_eff = Rm_nonsym,
+                              fullXtX_flag = FALSE,
+                              precompute_xty_flag = TRUE,
+                              max_alt = 1)
+  Rm_sym <- Matrix::forceSymmetric(Rm_nonsym)
+  res_sym <- cf_als_engine(dat$X_list, dat$Y,
+                           lambda_b = 0.1,
+                           lambda_h = 0.2,
+                           R_mat_eff = Rm_sym,
+                           fullXtX_flag = FALSE,
+                           precompute_xty_flag = TRUE,
+                           max_alt = 1)
+  expect_equal(res_nonsym$h, res_sym$h)
+  expect_equal(res_nonsym$beta, res_sym$beta)
+})
