@@ -101,11 +101,19 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   for (iter in seq_len(max_alt)) {
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
+
+      if (!isTRUE(precompute_xty_flag)) {
+        XtY_cache <- vector("list", k)
+        for (l in seq_len(k)) {
+          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
+        }
+      }
+
       DhTy_vx <- vapply(seq_len(k), function(c) {
         XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
           XtY_list[[c]][, vx]
         } else {
-          crossprod(X_list_proj[[c]], Y_proj[, vx])
+          XtY_cache[[c]]
         }
         crossprod(h_vx, XtY_c_vx)
 
@@ -139,7 +147,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
         XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
           XtY_list[[l]][, vx]
         } else {
-          crossprod(X_list_proj[[l]], Y_proj[, vx])
+          XtY_cache[[l]]
         }
         rhs <- rhs + b_vx[l] * XtY_l_vx
         if (fullXtX_flag) {
