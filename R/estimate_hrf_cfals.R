@@ -55,6 +55,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   d <- prep$d_basis_dim
   k <- prep$k_conditions
   Phi <- prep$Phi_recon_matrix
+  h_ref_shape_canonical <- prep$h_ref_shape_canonical
   n <- prep$n_timepoints
   v <- prep$v_voxels
 
@@ -69,14 +70,16 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
                                 lambda_init = lambda_init,
-                                h_ref_shape_norm = NULL,
+                                Phi_recon_matrix = Phi,
+                                h_ref_shape_canonical = h_ref_shape_canonical,
                                 R_mat = R_eff),
     ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
                                      fullXtX_flag = fullXtX,
-                                     h_ref_shape_norm = NULL,
+                                     Phi_recon_matrix = Phi,
+                                     h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_eff),
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
@@ -84,7 +87,8 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                            R_mat_eff = R_eff,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
-                           h_ref_shape_norm = NULL,
+                           Phi_recon_matrix = Phi,
+                           h_ref_shape_canonical = h_ref_shape_canonical,
                            max_alt = max_alt)
   )
 

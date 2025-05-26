@@ -97,6 +97,9 @@ fmrireg_cfals <- function(fmri_data_obj,
   design <- create_fmri_design(event_model, hrf_basis)
   X_list <- design$X_list
   cond_names <- names(X_list)
+  Phi <- design$Phi
+  h_ref_shape_canonical <- drop(reconstruction_matrix(HRF_SPMG1, sframe))
+  h_ref_shape_canonical <- h_ref_shape_canonical / max(abs(h_ref_shape_canonical))
 
   proj <- project_confounds(Y, X_list, confound_obj)
   Xp <- proj$X_list
@@ -105,14 +108,16 @@ fmrireg_cfals <- function(fmri_data_obj,
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,
                                 lambda_init = lambda_init,
-                                h_ref_shape_norm = design$h_ref_shape_norm,
+                                Phi_recon_matrix = Phi,
+                                h_ref_shape_canonical = h_ref_shape_canonical,
                                 R_mat = R_mat, ...),
     ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
                                      fullXtX_flag = fullXtX,
-                                     h_ref_shape_norm = design$h_ref_shape_norm,
+                                     Phi_recon_matrix = Phi,
+                                     h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_mat, ...),
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
@@ -120,13 +125,13 @@ fmrireg_cfals <- function(fmri_data_obj,
                            R_mat_eff = R_mat,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
-                           h_ref_shape_norm = design$h_ref_shape_norm,
+                           Phi_recon_matrix = Phi,
+                           h_ref_shape_canonical = h_ref_shape_canonical,
                            max_alt = max_alt, ...)
   )
 
   rownames(fit$beta) <- cond_names
 
-  Phi <- design$Phi
   recon_hrf <- Phi %*% fit$h
 
   n <- nrow(Yp)
