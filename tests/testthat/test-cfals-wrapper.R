@@ -155,4 +155,25 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
   expect_equal(wrap$beta_amps, direct$beta)
 })
 
+test_that("fmrireg_cfals predictions match canonical GLM", {
+  set.seed(123)
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                       method = "cf_als",
+                       lambda_b = 0,
+                       lambda_h = 0,
+                       max_alt = 1)
+  n <- nrow(dat$Y)
+  v <- ncol(dat$Y)
+  pred_cfals <- matrix(0, n, v)
+  for (c in seq_along(dat$X_list)) {
+    pred_cfals <- pred_cfals + (dat$X_list[[c]] %*% fit$h_coeffs) *
+      matrix(rep(fit$beta_amps[c, ], each = n), n, v)
+  }
+  Xbig <- do.call(cbind, dat$X_list)
+  gamma_hat <- chol2inv(chol(crossprod(Xbig))) %*% crossprod(Xbig, dat$Y)
+  pred_glm <- Xbig %*% gamma_hat
+  expect_equal(pred_cfals, pred_glm, tolerance = 1e-5)
+})
+
 

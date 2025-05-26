@@ -95,9 +95,11 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   rownames(fit$beta) <- prep$condition_names
   recon_hrf <- Phi %*% fit$h
 
-  pred_p <- Reduce(`+`, Map(function(Xc, bc) {
-    Xc %*% (fit$h * matrix(bc, nrow = d, ncol = v, byrow = TRUE))
-  }, Xp, asplit(fit$beta, 1)))
+  pred_p <- matrix(0, n, v)
+  for (c in seq_len(k)) {
+    pred_p <- pred_p + (Xp[[c]] %*% fit$h) *
+      matrix(rep(fit$beta[c, ], each = n), n, v)
+  }
   resids <- Yp - pred_p
 
   SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
