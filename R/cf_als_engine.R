@@ -120,9 +120,15 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     if (length(degree_vec) != v) {
       stop("laplacian_obj$degree length mismatch with number of voxels")
     }
+    if (h_solver == "auto") {
+      current_solver <- if (d * v < 50000) "direct" else "cg"
+    } else {
+      current_solver <- h_solver
+    }
   } else {
     L_mat <- NULL
     degree_vec <- NULL
+    current_solver <- "direct"
   }
 
   if (!is.null(R_mat_eff)) {
@@ -214,7 +220,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       fullXtX_flag, d, v, k
     )
 
-    if (lambda_s > 0 && h_solver == "cg") {
+    if (lambda_s > 0 && current_solver == "cg") {
       RHS_mat <- matrix(0.0, d, v)
       for (vx in seq_len(v)) {
         if (!isTRUE(precompute_xty_flag)) {
@@ -247,6 +253,33 @@ cf_als_engine <- function(X_list_proj, Y_proj,
         warning("CG solver did not converge within max_iter for h-update.")
       }
       h_current <- matrix(cg_sol$x, d, v)
+      for (vx in seq_len(v)) {
+        s <- max(abs(h_current[, vx]), epsilon_scale)
+        h_current[, vx] <- h_current[, vx] / s
+        b_current[, vx] <- b_current[, vx] * s
+      }
+    } else if (lambda_s > 0 && current_solver == "direct") {
+      RHS_mat <- matrix(0.0, d, v)
+      for (vx in seq_len(v)) {
+        if (!isTRUE(precompute_xty_flag)) {
+          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
+        }
+        b_vx <- b_current[, vx]
+        rhs <- numeric(d)
+        for (l in seq_len(k)) {
+          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
+            XtY_list[[l]][, vx]
+          } else {
+            XtY_cache[[l]]
+          }
+          rhs <- rhs + b_vx[l] * XtY_l_vx
+        }
+        RHS_mat[, vx] <- rhs
+      }
+
+      A_H_spatial <- construct_A_H_sparse(lhs_block_list, lambda_s, L_mat, d, v)
+      h_vec <- Matrix::solve(A_H_spatial, as.vector(RHS_mat))
+      h_current <- matrix(as.numeric(h_vec), d, v)
       for (vx in seq_len(v)) {
         s <- max(abs(h_current[, vx]), epsilon_scale)
         h_current[, vx] <- h_current[, vx] / s

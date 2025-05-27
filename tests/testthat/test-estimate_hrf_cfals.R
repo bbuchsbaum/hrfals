@@ -222,3 +222,16 @@ test_that("R_mat options work", {
   )
 })
 
+test_that("estimate_hrf_spatial_cfals forwards arguments", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  mask <- array(1, dim = c(2, 1, 1))
+  lap_obj <- build_voxel_laplacian(mask)
+  fit <- estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
+                                    "hrf(condition)", HRF_SPMG3,
+                                    laplacian_obj = lap_obj,
+                                    lambda_s_default = 0.05,
+                                    h_solver = "direct",
+                                    max_alt = 1)
+  expect_s3_class(fit, "hrfals_fit")
+})
+

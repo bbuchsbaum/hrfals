@@ -284,3 +284,21 @@ test_that("cg solver path runs", {
   expect_equal(dim(res$h), c(2, ncol(dat$Y)))
   expect_equal(dim(res$beta), c(2, ncol(dat$Y)))
 })
+
+test_that("direct solver path runs", {
+  dat <- simple_small_data()
+  mask <- array(1, dim = c(2, 1, 1))
+  lap_obj <- build_voxel_laplacian(mask)
+  res <- cf_als_engine(dat$X_list, dat$Y,
+                       lambda_b = 0.1,
+                       lambda_h = 0.2,
+                       lambda_s = 0.05,
+                       laplacian_obj = lap_obj,
+                       h_solver = "direct",
+                       precompute_xty_flag = TRUE,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       max_alt = 1)
+  expect_equal(dim(res$h), c(2, ncol(dat$Y)))
+  expect_equal(dim(res$beta), c(2, ncol(dat$Y)))
+})
