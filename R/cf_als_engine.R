@@ -99,6 +99,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   }
 
   iter_final <- 0
+  obj_trace <- numeric(max_alt)
   for (iter in seq_len(max_alt)) {
     b_prev <- b_current
     h_prev <- h_current
@@ -176,6 +177,20 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       b_current[, vx] <- b_current[, vx] * s
     }
 
+
+    # compute penalised SSE objective for monitoring
+    pred_iter <- matrix(0, n, v)
+    for (c in seq_len(k)) {
+      pred_iter <- pred_iter + (X_list_proj[[c]] %*% h_current) *
+        matrix(rep(b_current[c, ], each = n), n, v)
+    }
+    res_iter <- Y_proj - pred_iter
+    SSE_iter <- sum(res_iter^2)
+    beta_pen <- lambda_b * sum(b_current^2)
+    R_eff <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
+    h_pen <- lambda_h * sum(colSums(h_current * (R_eff %*% h_current)))
+    obj_trace[iter] <- SSE_iter + beta_pen + h_pen
+
     iter_final <- iter
     
     # Check convergence based on parameter changes
@@ -192,11 +207,12 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   }
 
   # Normalize and align HRF shapes
-  result <- normalize_and_align_hrf(h_current, b_current, Phi_recon_matrix, 
+  result <- normalize_and_align_hrf(h_current, b_current, Phi_recon_matrix,
                                    h_ref_shape_canonical, epsilon_scale,
                                    Y_proj, X_list_proj)
 
   attr(result$h, "iterations") <- iter_final
+  attr(result$h, "objective_trace") <- obj_trace[seq_len(iter_final)]
   list(h = result$h, beta = result$beta)
 }
 

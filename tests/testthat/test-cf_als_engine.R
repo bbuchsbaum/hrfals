@@ -246,3 +246,17 @@ test_that("symmetric Matrix penalty produces expected result", {
   expect_equal(res_sym$h, res_dense$h)
   expect_equal(res_sym$beta, res_dense$beta)
 })
+
+test_that("objective decreases each iteration", {
+  dat <- simple_small_data()
+  res <- cf_als_engine(dat$X_list, dat$Y,
+                       lambda_b = 0.1,
+                       lambda_h = 0.2,
+                       precompute_xty_flag = TRUE,
+                       Phi_recon_matrix = dat$Phi,
+                       h_ref_shape_canonical = dat$href,
+                       max_alt = 3)
+  obj <- attr(res$h, "objective_trace")
+  expect_length(obj, attr(res$h, "iterations"))
+  expect_true(all(diff(obj) <= 1e-8))
+})
