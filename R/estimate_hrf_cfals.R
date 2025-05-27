@@ -40,6 +40,11 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                lambda_b = 10,
                                lambda_h = 1,
                                lambda_joint = 0,
+                               lambda_s = 0,
+                               laplacian_obj = NULL,
+                               h_solver = c("direct", "cg", "auto"),
+                               cg_max_iter = 100,
+                               cg_tol = 1e-4,
                                R_mat = c("identity", "basis_default"),
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
@@ -93,10 +98,15 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                      Phi_recon_matrix = Phi,
                                      h_ref_shape_canonical = h_ref_shape_canonical,
                                      R_mat = R_eff),
-    cf_als = cf_als_engine(Xp, Yp,
+   cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
                            lambda_joint = lambda_joint,
+                           lambda_s = lambda_s,
+                           laplacian_obj = laplacian_obj,
+                           h_solver = h_solver,
+                           cg_max_iter = cg_max_iter,
+                           cg_tol = cg_tol,
                            R_mat_eff = R_eff,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
@@ -125,7 +135,8 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              lambdas = c(init = lambda_init,
                          beta = lambda_b,
                          h = lambda_h,
-                         joint = lambda_joint),
+                         joint = lambda_joint,
+                         spatial = lambda_s),
              call = match.call(),
              fmrireg_hrf_basis_used = hrf_basis_for_cfals,
              target_event_term_name = target_event_term_name,
@@ -134,6 +145,29 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              residuals = resids,
              bad_row_idx = prep$bad_row_idx,
              recon_hrf = recon_hrf,
-             gof = r2)
+            gof = r2)
+}
+
+#' Spatially-Regularised CF-ALS Convenience Wrapper
+#'
+#' Calls [estimate_hrf_cfals()] with a predefined non-zero `lambda_s`.
+#'
+#' @inheritParams estimate_hrf_cfals
+#' @param lambda_s_default Default spatial regularisation strength.
+#' @export
+estimate_hrf_spatial_cfals <- function(fmri_data_obj,
+                                       fmrireg_event_model,
+                                       target_event_term_name,
+                                       hrf_basis_for_cfals,
+                                       laplacian_obj,
+                                       lambda_s_default = 0.1,
+                                       ...) {
+  estimate_hrf_cfals(fmri_data_obj,
+                     fmrireg_event_model,
+                     target_event_term_name,
+                     hrf_basis_for_cfals,
+                     laplacian_obj = laplacian_obj,
+                     lambda_s = lambda_s_default,
+                     ...)
 }
 
