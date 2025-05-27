@@ -278,6 +278,21 @@ The proposed Woodbury-plus-BLAS-3 kernel is not just theoretically nicer; on com
   - Handle different HRF basis types (FIR, B-spline, etc.)
   - Preserve metadata and provenance information
 
+The integration work bridges the existing CF-ALS HRF estimation code with the
+new FastLSS kernel. A small helper will read the `h_coeffs` matrix from a
+`fmrireg_cfals_fit` object and reshape it into `H_allvoxels` (`d × V`).  Using
+the event timing information, a companion function will convolve each event
+series with the voxel-specific HRF to generate the trial regressor matrices
+`C_v`.  For shared-HRF analyses the same routine can average `H_allvoxels`
+across voxels to construct a single `C`.  These utilities will support multiple
+HRF basis classes by dispatching through the existing `HRF` methods provided by
+`fmrireg`.
+
+Metadata from the CF-ALS fit (basis details, sampling frame, preprocessing
+steps) will be attached as attributes to the objects returned to the FastLSS
+kernel.  This ensures full provenance tracking when results are written back out
+to disk or further processed in R.
+
 **Ticket LSS-009: Comprehensive Unit Testing**
 - **Priority**: High
 - **Effort**: 5 days
