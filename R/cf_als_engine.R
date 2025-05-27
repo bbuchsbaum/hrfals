@@ -1,3 +1,47 @@
+#' Compute LHS Blocks for the h-update
+#'
+#' Internal helper used by `cf_als_engine` to construct the list of
+#' `d x d` left-hand-side matrices for each voxel's h-update step.
+#'
+#' @param XtX_list list of `k` cross-product matrices `X_l^T X_l`.
+#' @param XtX_full_list optional `k x k` list matrix of full cross-products
+#'   `X_l^T X_m` when `fullXtX_flag` is `TRUE`.
+#' @param b_current current beta estimates (k x v).
+#' @param lambda_h ridge penalty for the h-update.
+#' @param lambda_joint joint ridge penalty applied to both beta and h.
+#' @param R_mat_eff effective penalty matrix for h-update or `NULL`.
+#' @param fullXtX_flag logical; whether full Gramian is used.
+#' @param d number of HRF basis functions.
+#' @param v number of voxels.
+#' @param k number of conditions.
+#' @return list of length `v` with `d x d` matrices.
+#' @keywords internal
+#' @noRd
+make_lhs_block_list <- function(XtX_list, XtX_full_list, b_current,
+                                lambda_h, lambda_joint, R_mat_eff,
+                                fullXtX_flag, d, v, k) {
+  penalty_mat <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
+  base_lhs <- lambda_h * penalty_mat + lambda_joint * diag(d)
+  lhs_list <- vector("list", v)
+  for (vx in seq_len(v)) {
+    lhs_vx <- base_lhs
+    b_vx <- b_current[, vx]
+    if (fullXtX_flag) {
+      for (l in seq_len(k)) {
+        for (m in seq_len(k)) {
+          lhs_vx <- lhs_vx + b_vx[l] * b_vx[m] * XtX_full_list[[l, m]]
+        }
+      }
+    } else {
+      for (l in seq_len(k)) {
+        lhs_vx <- lhs_vx + b_vx[l]^2 * XtX_list[[l]]
+      }
+    }
+    lhs_list[[vx]] <- lhs_vx
+  }
+  lhs_list
+}
+
 #' Confound-Free ALS HRF Estimation Engine
 #'
 #' Internal helper implementing the CF-ALS algorithm described in
@@ -139,11 +183,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                                      eps = max(epsilon_svd, epsilon_scale))
     }
 
-    h_penalty_matrix <- if (is.null(R_mat_eff)) {
-      diag(d)
-    } else {
-      R_mat_eff
-    }
+    lhs_block_list <- make_lhs_block_list(
+      XtX_list, XtX_full_list, b_current,
+      lambda_h, lambda_joint, R_mat_eff,
+      fullXtX_flag, d, v, k
+    )
 
     for (vx in seq_len(v)) {
       # FIXED: Reuse XtY_cache computed earlier in the voxel loop
@@ -152,7 +196,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       }
 
       b_vx <- b_current[, vx]
-      lhs <- lambda_h * h_penalty_matrix + lambda_joint * diag(d)
+      lhs <- lhs_block_list[[vx]]
       rhs <- numeric(d)
       for (l in seq_len(k)) {
 
@@ -162,13 +206,6 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           XtY_cache[[l]]
         }
         rhs <- rhs + b_vx[l] * XtY_l_vx
-        if (fullXtX_flag) {
-          for (m in seq_len(k)) {
-            lhs <- lhs + b_vx[l] * b_vx[m] * XtX_full_list[[l, m]]
-          }
-        } else {
-          lhs <- lhs + b_vx[l]^2 * XtX_list[[l]]
-        }
       }
       h_current[, vx] <- cholSolve(lhs, rhs,
                                    eps = max(epsilon_svd, epsilon_scale))
