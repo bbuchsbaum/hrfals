@@ -21,19 +21,31 @@
 #'   chunks.
 #' @param mem_limit Optional memory limit in megabytes for automatic
 #'   chunking.
+#' @param W Optional whitening matrix to apply to `Y`, `A` and `C`
+#'   before running the kernel.
 #' @return A numeric matrix of trial coefficients (T x v).
 #' @export
 lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
                        woodbury_thresh = 50,
                        chunk_size = NULL,
                        progress = FALSE,
-                       mem_limit = NULL) {
+                       mem_limit = NULL,
+                       W = NULL) {
   stopifnot(is.matrix(Y), is.matrix(A), is.matrix(C))
   n <- nrow(Y)
   if (nrow(A) != n || nrow(C) != n)
     stop("Y, A and C must have the same number of rows")
   if (length(p_vec) != n)
     stop("p_vec must have length n")
+
+  if (!is.null(W)) {
+    if (!is.matrix(W) || nrow(W) != n || ncol(W) != n)
+      stop("'W' must be an n x n whitening matrix")
+    Y <- W %*% Y
+    A <- W %*% A
+    C <- W %*% C
+    p_vec <- drop(W %*% p_vec)
+  }
 
   m <- ncol(A)
   Tt <- ncol(C)

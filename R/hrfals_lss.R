@@ -14,6 +14,8 @@
 #' @param mode Character string specifying the LSS kernel variant.
 #'   If "auto" (default) the function selects "shared" when
 #'   a single HRF is present in `cf_fit$h_coeffs` and "voxel" otherwise.
+#' @param whitening_matrix Optional whitening matrix applied to all
+#'   design matrices before running the kernel.
 #' @param ... Additional arguments passed to [lss_mode_a()] or
 #'   [lss_mode_b()].
 #' @return An object of class `fastlss_fit` containing the trial
@@ -22,6 +24,7 @@
 hrfals_lss <- function(cf_fit, events, fmri_data_obj,
                        confound_obj = NULL,
                        mode = c("auto", "shared", "voxel"),
+                       whitening_matrix = NULL,
                        ...) {
   if (!inherits(cf_fit, "hrfals_fit"))
     stop("'cf_fit' must be an object of class 'hrfals_fit'")
@@ -66,15 +69,18 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
       C[, t] <- X_list[[t]] %*% h_shared
     }
     p_vec <- rep(0, nrow(Y))
-    B <- lss_mode_a(Y, matrix(0, nrow(Y), 0), C, p_vec, ...)
+    B <- lss_mode_a(Y, matrix(0, nrow(Y), 0), C, p_vec,
+                    W = whitening_matrix, ...)
   } else {
     p_vec <- rep(0, nrow(Y))
     B <- lss_mode_b(Y, matrix(0, nrow(Y), 0), X_list,
-                    cf_fit$h_coeffs, p_vec, ...)
+                    cf_fit$h_coeffs, p_vec,
+                    W = whitening_matrix, ...)
   }
 
   dimnames(B) <- list(names(X_list), colnames(Y))
   fastlss_fit(B, mode = mode, cfals_fit = cf_fit,
               events = events, hrf_basis = basis,
-              call = match.call())
+              call = match.call(),
+              whitening_matrix = whitening_matrix)
 }
