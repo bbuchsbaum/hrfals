@@ -173,30 +173,7 @@ Here:
 
 **12. Implementation Order & Ticketed Sprint Plan**
 
-(Modify relevant tickets)
-
-**Week 0.5: Preparatory Refactoring (MR #0)**
-*   **Ticket HALS-S01:** (No change)
-
-**Week 1: Laplacian Builder & Initial CG Integration (MR #1)**
-*   **Ticket HALS-S02:** (No change to `build_voxel_laplacian`)
-*   **Ticket HALS-S03 (Revised):** Integrate `Rlinsolve::lsolve.cg` for h-update.
-    *   **Task:** Add `Rlinsolve` to package Imports.
-    *   **Task:** Implement the logic to construct the sparse `A_H` matrix.
-    *   **Task:** Implement the logic to construct the sparse block-Jacobi preconditioner matrix `P_sparse`.
-    *   **Task:** Add the branch in `cf_als_engine.R` to use `Rlinsolve::lsolve.cg` with `A_H` and `P_sparse` when `lambda_s > 0 && h_solver == "cg"`.
-    *   **Task:** Basic numerical verification on a small (e.g., 20-200 voxel) toy problem, comparing against the direct solver path if also implemented or a known solution.
-    *   **Deliverable:** MR with `build_voxel_laplacian`, `Rlinsolve` integration for CG path.
-
-**Week 2: Direct Solver, Wrappers, Alias (MR #2)**
-*   **Ticket HALS-S04 (Combined into S05):** (No separate Rcpp CG implementation needed if `Rlinsolve` is used).
-*   **Ticket HALS-S05 (Revised):** Implement Direct Solver Path & Finalize CG path.
-    *   **Task:** Implement the "direct" solver path in `cf_als_engine.R` (construct sparse `A_H` and use `Matrix::solve()`).
-    *   **Task:** Refine `h_solver="auto"` logic based on initial performance tests of `A_H` construction and solve times.
-    *   **Task:** Ensure CG and Direct solver paths are robust.
-*   **Ticket HALS-S06:** (No change - Update Wrappers and Add Alias)
-
-**Week 3–4:** (No change - Tests, Vignette, Tuning)
+This plan aims for incremental integration and testing.
 
 ---
 
@@ -211,31 +188,29 @@ Here:
     *   **Verification:** Ensure all existing tests for `cf_als_engine` pass with this refactoring (no change in output).
     *   **Deliverable:** MR with refactored `cf_als_engine.R`.
 
-**Week 1: Laplacian & CG Prototype (MR #1)**
+**Week 1: Laplacian Builder & Initial CG Integration (MR #1)**
 *   **Ticket HALS-S02:** Implement `build_voxel_laplacian`.
     *   **Task:** Create `R/utils_spatial.R` (or similar). Implement `build_voxel_laplacian(volume, connectivity=6)` taking a `neuroim2::NeuroVol` (mask) and returning `list(L = dgCMatrix, degree = numeric_vector_v)`.
     *   **Task:** Add unit tests for `build_voxel_laplacian` with small synthetic `LogicalNeuroVol` masks (e.g., 2x1x1, 2x2x1, handling of isolated voxels).
-*   **Ticket HALS-S03:** R Prototype for CG Solver & MVP for h-update.
-    *   **Task:** Implement a basic CG solver in R (or use an existing simple R package for it).
-    *   **Task:** Implement the matrix-vector product function `mvp_Afun_R(x_vec, list_LHS_v_blocks, lambda_s, L_mat, d, v)` in R.
-    *   **Task:** Add a *temporary, non-default* branch in `cf_als_engine.R` (e.g., `if (lambda_s > 0 && h_solver == "cg_prototype")`) to use this R-based CG for the h-update.
-    *   **Task:** Basic numerical verification on a very small (e.g., 2-10 voxel) toy problem.
-    *   **Deliverable:** MR with `build_voxel_laplacian`, R-CG prototype, and initial integration branch.
+*   **Ticket HALS-S03 (Revised):** Integrate `Rlinsolve::lsolve.cg` for h-update.
+    *   **Task:** Add `Rlinsolve` to package Imports.
+    *   **Task:** Implement the logic to construct the sparse `A_H` matrix.
+    *   **Task:** Implement the logic to construct the sparse block-Jacobi preconditioner matrix `P_sparse`.
+    *   **Task:** Add the branch in `cf_als_engine.R` to use `Rlinsolve::lsolve.cg` with `A_H` and `P_sparse` when `lambda_s > 0 && h_solver == "cg"`.
+    *   **Task:** Basic numerical verification on a small (e.g., 20-200 voxel) toy problem, comparing against the direct solver path if also implemented or a known solution.
+    *   **Deliverable:** MR with `build_voxel_laplacian` (from HALS-S02) and `Rlinsolve` integration for CG path (from HALS-S03 Revised).
 
-**Week 2: Rcpp CG, Direct Solver & Wrapper Integration (MR #2)**
-*   **Ticket HALS-S04:** Implement Rcpp CG Solver and Preconditioner.
-    *   **Task:** Port/implement CG solver to C++ using `RcppArmadillo` or `RcppEigen`.
-    *   **Task:** Implement the block-Jacobi preconditioner logic in C++.
-    *   **Task:** Expose this Rcpp CG solver to R.
-*   **Ticket HALS-S05:** Implement Rcpp MVP & Direct Solver Path.
-    *   **Task:** Port `mvp_Afun` to C++ for use with Rcpp CG solver, taking `list_LHS_v_blocks` (passed from R as a list of matrices, or constructed in C++ if more efficient).
-    *   **Task:** Implement the "direct" solver path in `cf_als_engine.R`: construct sparse `A_H` and use `Matrix::solve()`.
-    *   **Task:** Replace "cg_prototype" branch with the Rcpp CG solver and enable "direct" and "auto" for `h_solver`.
+**Week 2: Direct Solver, Wrappers, Alias (MR #2)**
+*   **Ticket HALS-S04 (Combined into S05):** (No separate Rcpp CG implementation needed if `Rlinsolve` is used).
+*   **Ticket HALS-S05 (Revised):** Implement Direct Solver Path & Finalize CG path.
+    *   **Task:** Implement the "direct" solver path in `cf_als_engine.R` (construct sparse `A_H` and use `Matrix::solve()`).
+    *   **Task:** Refine `h_solver="auto"` logic based on initial performance tests of `A_H` construction and solve times.
+    *   **Task:** Ensure CG and Direct solver paths are robust.
 *   **Ticket HALS-S06:** Update Wrappers and Add Alias.
     *   **Task:** Add `lambda_s`, `laplacian_obj`, `h_solver`, `cg_max_iter`, `cg_tol`, `...` to `hrfals_control_defaults`, `estimate_hrf_cfals`, and `hrfals` function signatures.
     *   **Task:** Implement the new convenience wrapper `estimate_hrf_spatial_cfals(...)` that calls `estimate_hrf_cfals` with a default `lambda_s > 0`.
     *   **Task:** Add basic unit tests for parameter pass-through and alias functionality.
-    *   **Deliverable:** MR with Rcpp CG, direct solver, updated wrappers, and new alias.
+    *   **Deliverable:** MR with Direct Solver Path, finalized CG path (from HALS-S05 Revised), and updated wrappers/alias (from HALS-S06).
 
 **Week 3: Comprehensive Testing & Benchmarking (MR #3)**
 *   **Ticket HALS-S07:** Extended Unit & Integration Tests.
@@ -255,5 +230,3 @@ Here:
     *   **Task:** Add a section to an existing vignette or create a small new one demonstrating "Spatially-Smoothed CF-ALS". Include an example of `build_voxel_laplacian(neuroim_mask_vol)` and passing `laplacian_obj` to `estimate_hrf_spatial_cfals`.
     *   **Task:** (Optional, if time permits) Add a small example for auto-tuning `lambda_s` on a subset of data or using a heuristic.
     *   **Deliverable:** MR with final documentation and vignette.
-
-**Week 3–4:** (No change - Tests, Vignette, Tuning)
