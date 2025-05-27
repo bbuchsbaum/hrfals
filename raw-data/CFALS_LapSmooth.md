@@ -221,6 +221,14 @@ This plan aims for incremental integration and testing.
     *   **Task:** Profile direct vs. CG solver performance for different `v*d` sizes.
     *   **Task:** Benchmark on 1-2 real (or realistic large synthetic) datasets.
     *   **Deliverable:** MR with comprehensive tests and an internal report/plots summarizing benchmark results and effect of `lambda_s`.
+```R
+# Example benchmark from HALS-S08
+res <- benchmark_spatial_cfals(lambda_s_values = c(0, 0.05, 0.1),
+                               solver_options = c("direct", "cg"),
+                               v_seq = c(20, 40))
+
+print(res)
+```
 
 **Week 4: Documentation & Finalization (MR #4)**
 *   **Ticket HALS-S09:** Update Documentation.
