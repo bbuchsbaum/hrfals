@@ -14,6 +14,16 @@
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param lambda_joint Joint penalty for the h update.
+#' @param lambda_s Spatial regularization strength. Set to zero to disable
+#'   spatial smoothing.
+#' @param laplacian_obj Optional list containing the Laplacian matrix `L` and
+#'   degree vector `degree` as returned by [build_voxel_laplacian()].
+#'   Required when `lambda_s > 0`.
+#' @param h_solver Solver to use for the spatial h-update. One of
+#'   "direct", "cg" or "auto".
+#' @param cg_max_iter Maximum iterations for the conjugate gradient solver when
+#'   `h_solver = "cg"`.
+#' @param cg_tol Convergence tolerance for the conjugate gradient solver.
 #' @param R_mat Either the character string "identity" (default) or
 #'   "basis_default" to indicate how the penalty matrix should be
 #'   constructed, or a numeric matrix providing a custom penalty for the

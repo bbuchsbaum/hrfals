@@ -14,6 +14,12 @@ estimate_hrf_cfals(
   lambda_init = 1,
   lambda_b = 10,
   lambda_h = 1,
+  lambda_joint = 0,
+  lambda_s = 0,
+  laplacian_obj = NULL,
+  h_solver = c("direct", "cg", "auto"),
+  cg_max_iter = 100,
+  cg_tol = 1e-4,
   R_mat = c("identity", "basis_default"),
   fullXtX = FALSE,
   precompute_xty_flag = TRUE,
@@ -41,6 +47,12 @@ estimate_hrf_cfals(
 \item{lambda_b}{Ridge penalty for the beta update.}
 
 \item{lambda_h}{Ridge penalty for the h update.}
+\item{lambda_joint}{Joint penalty for the h update.}
+\item{lambda_s}{Spatial regularization strength.}
+\item{laplacian_obj}{Laplacian object from \code{build_voxel_laplacian}.}
+\item{h_solver}{Solver for the spatial h-update.}
+\item{cg_max_iter}{Maximum iterations for CG solver.}
+\item{cg_tol}{Tolerance for CG solver convergence.}
 
 \item{R_mat}{Either the string \code{"identity"} (default) or
 \code{"basis_default"} to request an automatically generated penalty

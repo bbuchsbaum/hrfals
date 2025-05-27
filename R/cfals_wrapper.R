@@ -303,8 +303,6 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' )
 #' print(cfals_fit_bspline)
 #'
-#' @export
-
 #' Estimate HRF Using CF-ALS
 #'
 #' Primary user-facing wrapper for Confound-Free Alternating Least Squares.

@@ -7,9 +7,14 @@ library(fmrireg)
 test_that("hrfals_control_defaults returns expected fields", {
   defs <- hrfals_control_defaults()
   expect_type(defs, "list")
-  expect_setequal(names(defs),
-                  c("lambda_init", "lambda_b", "lambda_h", "lambda_joint", "R_mat",
-                    "fullXtX", "precompute_xty_flag", "max_alt"))
+  expect_setequal(
+    names(defs),
+    c(
+      "lambda_init", "lambda_b", "lambda_h", "lambda_joint", "lambda_s",
+      "laplacian_obj", "h_solver", "cg_max_iter", "cg_tol", "R_mat",
+      "fullXtX", "precompute_xty_flag", "max_alt"
+    )
+  )
 })
 
 # verify that overrides are respected by hrfals()
