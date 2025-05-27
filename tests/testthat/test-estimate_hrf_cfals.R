@@ -235,3 +235,41 @@ test_that("estimate_hrf_spatial_cfals forwards arguments", {
   expect_s3_class(fit, "hrfals_fit")
 })
 
+test_that("estimate_hrf_spatial_cfals default lambda handling", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  mask <- array(1, dim = c(2, 1, 1))
+  lap_obj <- build_voxel_laplacian(mask)
+
+  fit_base <- estimate_hrf_cfals(dat$Y, dat$event_model,
+                                 "hrf(condition)", HRF_SPMG3,
+                                 laplacian_obj = lap_obj,
+                                 lambda_s = 0.05,
+                                 h_solver = "direct",
+                                 lambda_b = 0.1,
+                                 lambda_h = 0.1,
+                                 max_alt = 1)
+
+  fit_wrap <- estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
+                                         "hrf(condition)", HRF_SPMG3,
+                                         laplacian_obj = lap_obj,
+                                         lambda_s_default = 0.05,
+                                         h_solver = "direct",
+                                         lambda_b = 0.1,
+                                         lambda_h = 0.1,
+                                         max_alt = 1)
+
+  expect_equal(fit_wrap$h_coeffs, fit_base$h_coeffs)
+  expect_equal(fit_wrap$beta_amps, fit_base$beta_amps)
+  expect_equal(unname(fit_wrap$lambdas["spatial"]), 0.05)
+})
+
+test_that("estimate_hrf_spatial_cfals requires laplacian_obj", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  expect_error(
+    estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
+                               "hrf(condition)", HRF_SPMG3,
+                               lambda_s_default = 0.05),
+    "laplacian_obj with elements L and degree must be provided"
+  )
+})
+
