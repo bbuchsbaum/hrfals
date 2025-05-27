@@ -14,8 +14,12 @@
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param lambda_joint Joint penalty for the h update.
-#' @param lambda_s Spatial regularization strength. Set to zero to disable
-#'   spatial smoothing.
+#' @param lambda_s Spatial regularization strength controlling the amount of
+#'   voxel-wise smoothing.  The effective physical smoothness depends on the
+#'   value of `lambda_s` relative to the voxel size.  For similar behaviour
+#'   across datasets with different resolutions consider scaling
+#'   `lambda_s` by `1 / mean(voxel_size)^2`.  Set to zero to disable spatial
+#'   smoothing.
 #' @param laplacian_obj Optional list containing the Laplacian matrix `L` and
 #'   degree vector `degree` as returned by [build_voxel_laplacian()].
 #'   Required when `lambda_s > 0`.

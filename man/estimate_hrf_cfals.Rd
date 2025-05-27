@@ -48,8 +48,12 @@ estimate_hrf_cfals(
 
 \item{lambda_h}{Ridge penalty for the h update.}
 \item{lambda_joint}{Joint penalty for the h update.}
-\item{lambda_s}{Spatial regularization strength.}
-\item{laplacian_obj}{Laplacian object from \code{build_voxel_laplacian}.}
+\item{lambda_s}{Spatial regularization strength controlling the amount of
+voxel-wise smoothing.  For comparable smoothing across different voxel
+sizes consider scaling \code{lambda_s} by \code{1 / mean(voxel\_size)^2}.}
+\item{laplacian_obj}{List containing the sparse Laplacian matrix \code{L} and
+degree vector as returned by \code{build_voxel_laplacian}. Required when
+\code{lambda_s > 0}.}
 \item{h_solver}{Solver for the spatial h-update.}
 \item{cg_max_iter}{Maximum iterations for CG solver.}
 \item{cg_tol}{Tolerance for CG solver convergence.}

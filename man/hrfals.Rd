@@ -64,6 +64,22 @@ Defaults to 10.}
 update step. Controls the L2 penalty on the HRF basis coefficients.
 Defaults to 1.}
 
+\item{lambda_s}{Spatial regularization strength for voxel-wise smoothing.  To
+obtain comparable smoothing across different voxel sizes consider scaling
+\code{lambda_s} by \code{1 / mean(voxel\_size)^2}. Set to zero to disable.}
+
+\item{laplacian_obj}{List with sparse Laplacian matrix \code{L} and degree
+vector created by \code{build_voxel_laplacian()}. Required when
+\code{lambda_s > 0}.}
+
+\item{h_solver}{Solver used for the spatial h-update. One of \code{"direct"},
+\code{"cg"} or \code{"auto"}.}
+
+\item{cg_max_iter}{Maximum iterations for the conjugate gradient solver when
+\code{h_solver = "cg"}.}
+
+\item{cg_tol}{Convergence tolerance for the conjugate gradient solver.}
+
 \item{R_mat}{Optional penalty matrix for the h (HRF coefficient) update.
 If `NULL` (default), an identity matrix is used, corresponding to a simple
 ridge penalty. If a basis-specific penalty (e.g., for smoothing) is
