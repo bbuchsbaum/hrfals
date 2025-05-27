@@ -13,9 +13,10 @@
 #' @param lambda_init Ridge penalty for initial LS solve.
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
-#' @param penalty_R_mat_type How to construct the penalty matrix. One of
-#'   "identity", "basis_default", or "custom". If "custom", supply `R_mat`.
-#' @param R_mat Optional custom penalty matrix for the h update.
+#' @param R_mat Either the character string "identity" (default) or
+#'   "basis_default" to indicate how the penalty matrix should be
+#'   constructed, or a numeric matrix providing a custom penalty for the
+#'   h update.
 #' @param fullXtX Logical. If `TRUE`, the h-update step uses the full
 #'   Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)}
 #'   with cross-condition terms. If `FALSE` (default), the Gramian is
@@ -37,8 +38,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                lambda_init = 1,
                                lambda_b = 10,
                                lambda_h = 1,
-                               penalty_R_mat_type = c("identity", "basis_default", "custom"),
-                               R_mat = NULL,
+                               R_mat = c("identity", "basis_default"),
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
                                max_alt = 1,
@@ -46,7 +46,6 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
                                ...) {
   method <- match.arg(method)
-  penalty_R_mat_type <- match.arg(penalty_R_mat_type)
 
   prep <- create_cfals_design(fmri_data_obj,
                              fmrireg_event_model,
@@ -64,13 +63,19 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   n <- prep$n_timepoints
   v <- prep$v_voxels
 
-  R_eff <- switch(penalty_R_mat_type,
-                  identity = diag(d),
-                  basis_default = fmrireg::penalty_matrix(hrf_basis_for_cfals),
-                  custom = {
-                    if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
-                    R_mat
-                  })
+  if (is.character(R_mat)) {
+    R_choice <- match.arg(R_mat, c("identity", "basis_default"))
+    R_eff <- switch(R_choice,
+                    identity = diag(d),
+                    basis_default = fmrireg::penalty_matrix(hrf_basis_for_cfals))
+  } else if (is.matrix(R_mat)) {
+    if (nrow(R_mat) != d || ncol(R_mat) != d) {
+      stop(paste("R_mat must be a", d, "x", d, "matrix"))
+    }
+    R_eff <- R_mat
+  } else {
+    stop("R_mat must be 'identity', 'basis_default', or a numeric matrix")
+  }
 
   fit <- switch(method,
     ls_svd_only = ls_svd_engine(Xp, Yp,

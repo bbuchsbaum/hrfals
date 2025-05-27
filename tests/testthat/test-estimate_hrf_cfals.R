@@ -73,7 +73,7 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                              lambda_b = 0.1,
                              lambda_h = 0.1,
                              fullXtX = TRUE,
-                             penalty_R_mat_type = "identity")
+                             R_mat = "identity")
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
@@ -102,7 +102,7 @@ test_that("estimate_hrf_cfals predictions match canonical GLM", {
   expect_equal(pred_cfals, pred_glm, tolerance = 5e-2)
 })
                    
-test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
+test_that("R_mat = 'basis_default' uses basis penalty matrix", {
 
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
   prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
@@ -121,12 +121,12 @@ test_that("penalty_R_mat_type 'basis' uses basis penalty matrix", {
                              lambda_b = 0.1,
                              lambda_h = 0.1,
                              fullXtX = TRUE,
-                             penalty_R_mat_type = "basis_default")
+                             R_mat = "basis_default")
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
 
-test_that("penalty_R_mat_type 'custom' uses provided matrix", {
+test_that("R_mat custom matrix is used", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
   prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
   R_custom <- diag(prep$d_basis_dim) * 2
@@ -144,7 +144,6 @@ test_that("penalty_R_mat_type 'custom' uses provided matrix", {
                              lambda_b = 0.1,
                              lambda_h = 0.1,
                              fullXtX = TRUE,
-                             penalty_R_mat_type = "custom",
                              R_mat = R_custom)
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
@@ -199,28 +198,27 @@ test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
   }
 })
 
-test_that("penalty_R_mat_type options work", {
+test_that("R_mat options work", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
 
   fit_basis <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
                                   HRF_SPMG3,
                                   lambda_b = 0.1, lambda_h = 0.1,
-                                  penalty_R_mat_type = "basis_default")
+                                  R_mat = "basis_default")
   expect_s3_class(fit_basis, "hrfals_fit")
 
   Rm <- diag(nbasis(HRF_SPMG3))
   fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
                                    HRF_SPMG3,
                                    lambda_b = 0.1, lambda_h = 0.1,
-                                   penalty_R_mat_type = "custom",
                                    R_mat = Rm)
   expect_s3_class(fit_custom, "hrfals_fit")
 
   expect_error(
     estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
                        lambda_b = 0.1, lambda_h = 0.1,
-                       penalty_R_mat_type = "custom"),
-    "R_mat must be supplied"
+                       R_mat = NA),
+    "R_mat must be 'identity', 'basis_default', or a numeric matrix"
   )
 })
 
