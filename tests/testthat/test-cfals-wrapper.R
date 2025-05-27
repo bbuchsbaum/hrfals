@@ -34,12 +34,12 @@ simulate_cfals_wrapper_data <- function(hrf_basis, noise_sd = 0.05, signal_scale
 }
 
 
-test_that("fmrireg_hrf_cfals works across HRF bases", {
+test_that("hrfals works across HRF bases", {
   bases <- list(HRF_SPMG3, gen_hrf(hrf_bspline, N=4))
   for (b in bases) {
     dat <- simulate_cfals_wrapper_data(b)
     design <- create_cfals_design(dat$Y, dat$event_model, b)
-    fit <- fmrireg_hrf_cfals(dat$Y, dat$event_model, b,
+    fit <- hrfals(dat$Y, dat$event_model, b,
                              lam_beta = 0.1, lam_h = 0.1)
     expect_equal(dim(fit$h_coeffs), c(nbasis(b), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
@@ -52,9 +52,10 @@ test_that("fmrireg_cfals wrapper supports multiple methods", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
   methods <- c("ls_svd_only", "ls_svd_1als", "cf_als")
   for (m in methods) {
-    fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
-                         method = m, lambda_b = 0.1, lambda_h = 0.1,
-                         lambda_init = 0.5, max_alt = 1)
+    fit <- suppressWarnings(
+      fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                    method = m, lambda_b = 0.1, lambda_h = 0.1,
+                    lambda_init = 0.5, max_alt = 1))
     expect_equal(dim(fit$h_coeffs), c(nbasis(HRF_SPMG3), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
   }
@@ -62,7 +63,7 @@ test_that("fmrireg_cfals wrapper supports multiple methods", {
 
 test_that("cfals handles low-signal data", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3, noise_sd = 0.5, signal_scale = 0.01)
-  fit <- fmrireg_hrf_cfals(dat$Y, dat$event_model, HRF_SPMG3)
+  fit <- hrfals(dat$Y, dat$event_model, HRF_SPMG3)
   expect_lt(mean(fit$gof_per_voxel), 0.2)
 })
 
@@ -116,12 +117,13 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
                                fullXtX_flag = TRUE,
                                Phi_recon_matrix = design$Phi_recon_matrix,
                                h_ref_shape_canonical = design$h_ref_shape_canonical)
-  wrap <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
-                        method = "ls_svd_1als",
-                        fullXtX = TRUE,
-                        lambda_init = 0,
-                        lambda_b = 0.1,
-                        lambda_h = 0.1)
+  wrap <- suppressWarnings(
+    fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                  method = "ls_svd_1als",
+                  fullXtX = TRUE,
+                  lambda_init = 0,
+                  lambda_b = 0.1,
+                  lambda_h = 0.1))
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
@@ -129,11 +131,12 @@ test_that("fullXtX argument is forwarded through fmrireg_cfals", {
 test_that("fmrireg_cfals predictions match canonical GLM", {
   set.seed(123)
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
-                       method = "cf_als",
-                       lambda_b = 0,
-                       lambda_h = 0,
-                       max_alt = 1)
+  fit <- suppressWarnings(
+    fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                  method = "cf_als",
+                  lambda_b = 0,
+                  lambda_h = 0,
+                  max_alt = 1))
   n <- nrow(dat$Y)
   v <- ncol(dat$Y)
   pred_cfals <- matrix(0, n, v)

@@ -65,7 +65,7 @@ emod <- fmrireg::event_model(onset ~ hrf(cond), data = ev_df,
 Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 
 # Fit using CF-ALS with SPMG3 basis (3 basis functions)
-fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
+fit <- hrfals(Y, emod, HRF_SPMG3)
 print(fit)
 }
 }

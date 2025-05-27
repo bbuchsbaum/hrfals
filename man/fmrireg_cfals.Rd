@@ -2,7 +2,7 @@
 % Please edit documentation in R/cfals_wrapper.R
 \name{fmrireg_cfals}
 \alias{fmrireg_cfals}
-\title{Estimate Rank-1 HRF Using LS+SVD/CF-ALS Methods}
+\title{(Deprecated) Estimate Rank-1 HRF Using LS+SVD/CF-ALS Methods}
 \usage{
 fmrireg_cfals(
   fmri_data_obj,
@@ -70,6 +70,7 @@ An object of class `fmrireg_cfals_fit` containing the
   estimated HRF coefficients and amplitudes.
 }
 \description{
+\strong{Deprecated}. Use \code{\link{hrfals}} instead.
 High level wrapper that prepares design matrices and dispatches to
 the desired estimation engine.  This function supports the fast
 \emph{LS+SVD} initialisation, the one-step refinement
@@ -102,7 +103,7 @@ emod <- fmrireg::event_model(onset ~ hrf(cond), data = ev_df,
 Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 
 # Fit using CF-ALS with SPMG3 basis (3 basis functions)
-fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
+fit <- hrfals(Y, emod, HRF_SPMG3)
 print(fit)
 }
 }

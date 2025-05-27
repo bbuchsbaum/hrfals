@@ -297,25 +297,51 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' print(cfals_fit_bspline)
 #'
 #' @export
-fmrireg_hrf_cfals <- function(fmri_data_obj,
-                              event_model,
-                              hrf_basis,
-                              confound_obj = NULL,
-                              lam_beta = 10,
-                              lam_h = 1,
-                              R_mat = NULL,
-                              fullXtX = FALSE,
-                              max_alt = 1,
-                              ...) {
-  fmrireg_cfals(fmri_data_obj,
-                event_model,
-                hrf_basis,
-                confound_obj = confound_obj,
-                method = "cf_als",
-                lambda_b = lam_beta,
-                lambda_h = lam_h,
-                R_mat = R_mat,
-                fullXtX = fullXtX,
-                max_alt = max_alt,
-                ...)
+
+#' Estimate HRF Using CF-ALS
+#'
+#' Primary user-facing wrapper for Confound-Free Alternating Least Squares.
+#' Assumes a single HRF term in \code{event_model} and returns an
+#' \code{hrfals_fit} object.
+#'
+#' @inheritParams fmrireg_hrf_cfals
+#' @return An object of class \code{hrfals_fit}.
+#' @export
+hrfals <- function(fmri_data_obj,
+                   event_model,
+                   hrf_basis,
+                   confound_obj = NULL,
+                   lam_beta = 10,
+                   lam_h = 1,
+                   R_mat = NULL,
+                   fullXtX = FALSE,
+                   max_alt = 1,
+                   ...) {
+  target_term <- names(event_model$terms)[1]
+  penalty_type <- if (is.null(R_mat)) "identity" else "custom"
+  estimate_hrf_cfals(fmri_data_obj,
+                     fmrireg_event_model = event_model,
+                     target_event_term_name = target_term,
+                     hrf_basis_for_cfals = hrf_basis,
+                     confound_obj = confound_obj,
+                     method = "cf_als",
+                     lambda_b = lam_beta,
+                     lambda_h = lam_h,
+                     penalty_R_mat_type = penalty_type,
+                     R_mat = R_mat,
+                     fullXtX = fullXtX,
+                     max_alt = max_alt,
+                     ...)
+}
+
+#' @export
+fmrireg_cfals <- function(...) {
+  .Deprecated("hrfals")
+  hrfals(...)
+}
+
+#' @export
+fmrireg_hrf_cfals <- function(...) {
+  .Deprecated("hrfals")
+  hrfals(...)
 }

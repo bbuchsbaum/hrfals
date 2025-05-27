@@ -41,7 +41,7 @@ emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
 Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 
 # Fit using CF-ALS
-cfals_fit <- fmrireg_hrf_cfals(
+cfals_fit <- hrfals(
   fmri_data_obj = Y_matrix,
   event_model = emod,
   hrf_basis = fmrireg::HRF_SPMG3,
@@ -55,8 +55,8 @@ print(cfals_fit)
 
 ## Main Functions
 
-- `fmrireg_hrf_cfals()`: Main user-facing function for CF-ALS HRF estimation
-- `fmrireg_cfals()`: General wrapper supporting multiple estimation methods
+- `hrfals()`: Main user-facing function for CF-ALS HRF estimation
+- `fmrireg_cfals()` (deprecated): General wrapper supporting multiple estimation methods
 - `create_cfals_design()`: Design matrix creation leveraging fmrireg functionality
 - `estimate_hrf_cfals()`: Lower-level estimation function for single event terms
 
