@@ -41,4 +41,7 @@ S3method(print,summary.fastlss_fit)
 
 importFrom(Matrix,Diagonal)
 importFrom(Matrix,sparseMatrix)
+importFrom(Matrix,bdiag)
+importFrom(Matrix,kronecker)
+importFrom(Rlinsolve,lsolve.cg)
 export(build_voxel_laplacian)

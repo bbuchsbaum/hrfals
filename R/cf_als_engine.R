@@ -84,6 +84,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
+                          lambda_s = 0,
+                          laplacian_obj = NULL,
+                          h_solver = c("direct", "cg", "auto"),
+                          cg_max_iter = 100,
+                          cg_tol = 1e-4,
                           Phi_recon_matrix,
                           h_ref_shape_canonical,
                           max_alt = 1,
@@ -98,6 +103,26 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   k <- dims$k
   if (lambda_b < 0 || lambda_h < 0 || lambda_init < 0 || lambda_joint < 0) {
     stop("lambda_b, lambda_h, lambda_init, and lambda_joint must be non-negative")
+  }
+
+  h_solver <- match.arg(h_solver)
+  if (lambda_s < 0) {
+    stop("lambda_s must be non-negative")
+  }
+
+  if (lambda_s > 0) {
+    if (is.null(laplacian_obj) || is.null(laplacian_obj$L) ||
+        is.null(laplacian_obj$degree)) {
+      stop("laplacian_obj with elements L and degree must be provided when lambda_s > 0")
+    }
+    L_mat <- laplacian_obj$L
+    degree_vec <- laplacian_obj$degree
+    if (length(degree_vec) != v) {
+      stop("laplacian_obj$degree length mismatch with number of voxels")
+    }
+  } else {
+    L_mat <- NULL
+    degree_vec <- NULL
   }
 
   if (!is.null(R_mat_eff)) {
@@ -189,31 +214,66 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       fullXtX_flag, d, v, k
     )
 
-    for (vx in seq_len(v)) {
-      # FIXED: Reuse XtY_cache computed earlier in the voxel loop
-      if (!isTRUE(precompute_xty_flag)) {
-        XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-      }
-
-      b_vx <- b_current[, vx]
-      lhs <- lhs_block_list[[vx]]
-      rhs <- numeric(d)
-      for (l in seq_len(k)) {
-
-        XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
-          XtY_list[[l]][, vx]
-        } else {
-          XtY_cache[[l]]
+    if (lambda_s > 0 && h_solver == "cg") {
+      RHS_mat <- matrix(0.0, d, v)
+      for (vx in seq_len(v)) {
+        if (!isTRUE(precompute_xty_flag)) {
+          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
         }
-        rhs <- rhs + b_vx[l] * XtY_l_vx
+        b_vx <- b_current[, vx]
+        rhs <- numeric(d)
+        for (l in seq_len(k)) {
+          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
+            XtY_list[[l]][, vx]
+          } else {
+            XtY_cache[[l]]
+          }
+          rhs <- rhs + b_vx[l] * XtY_l_vx
+        }
+        RHS_mat[, vx] <- rhs
       }
-      h_current[, vx] <- cholSolve(lhs, rhs,
-                                   eps = max(epsilon_svd, epsilon_scale))
-      
-      # Fix A: Normalize h and scale beta to prevent scale drift
-      s <- max(abs(h_current[, vx]), epsilon_scale)
-      h_current[, vx] <- h_current[, vx] / s
-      b_current[, vx] <- b_current[, vx] * s
+
+      A_H_spatial <- construct_A_H_sparse(lhs_block_list, lambda_s, L_mat, d, v)
+      P_sparse <- construct_preconditioner(lhs_block_list, lambda_s, degree_vec, d, v)
+      cg_sol <- Rlinsolve::lsolve.cg(A = A_H_spatial,
+                                     B = as.vector(RHS_mat),
+                                     preconditioner = P_sparse,
+                                     xinit = as.vector(h_current),
+                                     reltol = cg_tol,
+                                     maxiter = cg_max_iter,
+                                     adjsym = TRUE, verbose = FALSE)
+      if (cg_sol$iter == cg_max_iter &&
+          cg_sol$errors[length(cg_sol$errors)] > cg_tol) {
+        warning("CG solver did not converge within max_iter for h-update.")
+      }
+      h_current <- matrix(cg_sol$x, d, v)
+      for (vx in seq_len(v)) {
+        s <- max(abs(h_current[, vx]), epsilon_scale)
+        h_current[, vx] <- h_current[, vx] / s
+        b_current[, vx] <- b_current[, vx] * s
+      }
+    } else {
+      for (vx in seq_len(v)) {
+        if (!isTRUE(precompute_xty_flag)) {
+          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
+        }
+        b_vx <- b_current[, vx]
+        lhs <- lhs_block_list[[vx]]
+        rhs <- numeric(d)
+        for (l in seq_len(k)) {
+          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
+            XtY_list[[l]][, vx]
+          } else {
+            XtY_cache[[l]]
+          }
+          rhs <- rhs + b_vx[l] * XtY_l_vx
+        }
+        h_current[, vx] <- cholSolve(lhs, rhs,
+                                     eps = max(epsilon_svd, epsilon_scale))
+        s <- max(abs(h_current[, vx]), epsilon_scale)
+        h_current[, vx] <- h_current[, vx] / s
+        b_current[, vx] <- b_current[, vx] * s
+      }
     }
 
 
