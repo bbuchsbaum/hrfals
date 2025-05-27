@@ -1,5 +1,7 @@
 context("cfals design helpers")
 
+library(fmrireg)
+
 test_that("reconstruction_matrix works", {
   sf <- sampling_frame(10, TR = 1)
   phi <- reconstruction_matrix(HRF_SPMG3, sf)
@@ -7,9 +9,11 @@ test_that("reconstruction_matrix works", {
   expect_gt(nrow(phi), 1)
 })
 
-test_that("penalty_matrix defaults to identity", {
-  Rm <- penalty_matrix(HRF_SPMG3)
-  expect_equal(Rm, diag(nbasis(HRF_SPMG3)))
+test_that("fmrireg penalty_matrix works", {
+  Rm <- fmrireg::penalty_matrix(HRF_SPMG3)
+  expect_true(is.matrix(Rm))
+  expect_equal(dim(Rm), c(nbasis(HRF_SPMG3), nbasis(HRF_SPMG3)))
+  expect_true(isSymmetric(Rm))
 })
 
 test_that("convolve_timeseries_with_single_basis behaves like impulse response", {
@@ -140,7 +144,7 @@ test_that("create_cfals_design works without confounds", {
   expect_equal(res$v_voxels, 3)
   expect_length(res$X_list_proj, 2)
   expect_length(res$condition_names, 2)
-  expect_true(all(c("A", "B") %in% res$condition_names))
+  expect_true(all(c("conditionA", "conditionB") %in% res$condition_names))
 })
 
 test_that("deprecated function still works with warning", {

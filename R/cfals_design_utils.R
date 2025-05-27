@@ -30,22 +30,7 @@ reconstruction_matrix.HRF <- function(hrf, sframe) {
   if (is.vector(vals)) matrix(vals, ncol = 1L) else as.matrix(vals)
 }
 
-#' Penalty matrix for an HRF basis
-#'
-#' Provides a ridge or smoothness penalty matrix for the basis
-#' coefficients. The default method returns an identity matrix.
-#'
-#' @param hrf An object of class `HRF`.
-#' @return A square numeric matrix.
-#' @export
-penalty_matrix <- function(hrf) {
-  UseMethod("penalty_matrix")
-}
 
-#' @export
-penalty_matrix.HRF <- function(hrf) {
-  diag(nbasis(hrf))
-}
 
 #' Convolve a timeseries with a single HRF basis function
 #'
@@ -101,7 +86,7 @@ convolve_timeseries_with_single_basis <- function(ts, hrf_basis,
 #'   argument.
 #' @return A list with projected `X_list` and `Y` matrices.
 #' @export
-project_confounds <- function(Y, X_list, confounds = NULL, lapack_qr = TRUE) {
+project_confounds <- function(Y, X_list, confounds = NULL, lapack_qr = FALSE) {
   if (is.null(confounds)) {
     return(list(X_list = X_list, Y = Y))
   }
@@ -136,17 +121,54 @@ create_fmri_design <- function(event_model, hrf_basis) {
 
   sframe <- event_model$sampling_frame
   sample_times <- samples(sframe, global = TRUE)
+  d <- nbasis(hrf_basis)
 
-  reg_lists <- lapply(event_model$terms, regressors.event_term,
-                      hrf = hrf_basis,
-                      sampling_frame = sframe,
-                      summate = FALSE,
-                      drop.empty = TRUE)
-  regs <- unlist(reg_lists, recursive = FALSE)
-  cond_names <- names(regs)
-  X_list <- lapply(regs, function(r)
-    evaluate(r, sample_times, precision = sframe$precision))
-  names(X_list) <- cond_names
+  # Extract event information from the event model
+  # We need to manually create design matrices for each condition and basis function
+  X_list <- list()
+  
+  # Get the event terms from the model
+  terms <- event_model$terms
+  
+  # For each term that involves HRF convolution
+  for (term in terms) {
+    if (inherits(term, "event_term")) {
+      # Get the variable name for this term
+      var_name <- term$varname
+      
+      # Get the conditions for this term from the event_table
+      if (var_name %in% names(term$event_table)) {
+        conditions <- levels(term$event_table[[var_name]])
+        
+        # For each condition, create a design matrix with d columns (one per basis function)
+        for (cond in conditions) {
+          # Get events for this condition
+          cond_mask <- term$event_table[[var_name]] == cond
+          cond_onsets <- term$onsets[cond_mask]
+          
+          # Create design matrix for this condition with d columns
+          X_cond <- matrix(0, length(sample_times), d)
+          
+          # For each basis function
+          for (j in seq_len(d)) {
+            # Create a timeseries with impulses at event onsets
+            ts <- rep(0, length(sample_times))
+            for (onset in cond_onsets) {
+              onset_idx <- which.min(abs(sample_times - onset))
+              if (onset_idx <= length(ts)) {
+                ts[onset_idx] <- 1
+              }
+            }
+            
+            # Convolve with the j-th basis function
+            X_cond[, j] <- convolve_timeseries_with_single_basis(ts, hrf_basis, j, sframe)
+          }
+          
+          X_list[[paste0(var_name, cond)]] <- X_cond
+        }
+      }
+    }
+  }
 
   Phi <- reconstruction_matrix(hrf_basis, sframe)
   time_points <- seq(0, attr(hrf_basis, "span"), by = sframe$TR[1])

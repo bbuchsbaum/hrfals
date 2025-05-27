@@ -24,7 +24,7 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
     vals <- matrix(vals, ncol = 1L)
   }
   kern <- vals[, basis_function_index]
-  conv_full <- convolve(raw_timeseries, rev(kern), type = "open")
+  conv_full <- stats::convolve(raw_timeseries, rev(kern), type = "open")
   conv_full[seq_along(raw_timeseries)]
 }
 
@@ -103,11 +103,9 @@ create_cfals_design <- function(fmri_data_obj,
     stop("No estimable conditions found in event model")
   }
 
-  # Create canonical reference HRF using fmrireg's HRF_SPMG1
-  time_points_for_shape <- seq(0, hrf_shape_duration_sec, by = hrf_shape_sample_res_sec)
-  h_ref_shape_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, time_points_for_shape)
-  h_ref_shape_canonical <- drop(h_ref_shape_canonical)
-  h_ref_shape_canonical <- h_ref_shape_canonical / max(abs(h_ref_shape_canonical))
+  # Create canonical reference HRF using the same grid as the reconstruction matrix
+  # This ensures consistency between h_ref_shape_canonical and Phi_recon_matrix
+  h_ref_shape_canonical <- design_info$h_ref_shape_norm
 
   # Project out confounds using the existing function
   proj <- project_confounds(Y_raw, X_list_raw, confound_obj)

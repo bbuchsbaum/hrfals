@@ -66,7 +66,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
 
   R_eff <- switch(penalty_R_mat_type,
                   identity = diag(d),
-                  basis_default = penalty_matrix(hrf_basis_for_cfals),
+                  basis_default = fmrireg::penalty_matrix(hrf_basis_for_cfals),
                   custom = {
                     if (is.null(R_mat)) stop("R_mat must be supplied for custom penalty")
                     R_mat
