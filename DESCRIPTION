@@ -12,7 +12,12 @@ Imports:
     fmrireg (>= 0.0.0.9000),
     Matrix,
     broom,
-    ggplot2
+    ggplot2,
+    Rcpp
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+SystemRequirements: C++11
 Remotes:
     bbuchsbaum/fmrireg
 URL: https://github.com/bbuchsbaum/hrfals
