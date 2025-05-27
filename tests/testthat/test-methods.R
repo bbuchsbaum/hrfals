@@ -26,7 +26,7 @@ make_fmrireg_fit <- function() {
 test_that("hrfals_fit methods run", {
   fit <- make_hrfals_fit()
   expect_output(print(fit), "hrfals Fit")
-  expect_output(summary(fit), regexp = "")
+  expect_output(print(summary(fit)), "Summary of hrfals Fit")
   pdf(NULL)
   expect_silent(plot(fit))
   dev.off()
@@ -36,7 +36,7 @@ test_that("hrfals_fit methods run", {
 test_that("fmrireg_cfals_fit methods run", {
   fit <- make_fmrireg_fit()
   expect_output(print(fit), "fmrireg CF-ALS Fit")
-  expect_output(summary(fit), regexp = "")
+  expect_output(print(summary(fit)), "Summary of fmrireg CF-ALS Fit")
   pdf(NULL)
   expect_silent(plot(fit))
   dev.off()

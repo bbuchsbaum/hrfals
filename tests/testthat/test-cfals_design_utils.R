@@ -167,6 +167,6 @@ test_that("deprecated function still works with warning", {
 })
 
 test_that("defunct create_cfals_design_from_model errors", {
-  expect_error(create_cfals_design_from_model(), "Defunct")
+  expect_error(create_cfals_design_from_model(), "has been removed")
 })
 

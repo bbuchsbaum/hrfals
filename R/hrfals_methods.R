@@ -63,6 +63,23 @@ summary.hrfals_fit <- function(object, ...) {
 }
 
 #' @export
+print.summary.hrfals_fit <- function(x, ...) {
+  cat("\nSummary of hrfals Fit\n")
+  cat("=====================\n")
+  cat(sprintf("Voxels: %d\n", x$design$v))
+  cat(sprintf("Time points: %d\n", x$design$n))
+  cat(sprintf("Conditions: %d\n", x$design$k))
+  cat(sprintf("Basis functions: %d\n", x$design$d))
+  cat(sprintf("Lambda beta: %.3f\n", x$lambdas["beta"]))
+  cat(sprintf("Lambda h: %.3f\n", x$lambdas["h"]))
+  if (!is.null(x$r2)) {
+    cat(sprintf("Mean R²: %.3f\n", mean(x$r2, na.rm = TRUE)))
+    cat(sprintf("R² range: [%.3f, %.3f]\n", min(x$r2, na.rm = TRUE), max(x$r2, na.rm = TRUE)))
+  }
+  invisible(x)
+}
+
+#' @export
 plot.hrfals_fit <- function(x, vox = 1, ...) {
   if (is.null(x$phi_recon_matrix))
     stop("phi_recon_matrix not available for plotting")

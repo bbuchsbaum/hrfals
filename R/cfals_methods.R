@@ -85,6 +85,23 @@ summary.fmrireg_cfals_fit <- function(object, ...) {
 }
 
 #' @export
+print.summary.fmrireg_cfals_fit <- function(x, ...) {
+  cat("\nSummary of fmrireg CF-ALS Fit\n")
+  cat("=============================\n")
+  cat(sprintf("Voxels: %d\n", x$design$v))
+  cat(sprintf("Time points: %d\n", x$design$n))
+  cat(sprintf("Conditions: %d\n", x$design$k))
+  cat(sprintf("Basis functions: %d\n", x$design$d))
+  cat(sprintf("Lambda beta: %.3f\n", x$lambdas["beta"]))
+  cat(sprintf("Lambda h: %.3f\n", x$lambdas["h"]))
+  if (!is.null(x$r2)) {
+    cat(sprintf("Mean R²: %.3f\n", mean(x$r2, na.rm = TRUE)))
+    cat(sprintf("R² range: [%.3f, %.3f]\n", min(x$r2, na.rm = TRUE), max(x$r2, na.rm = TRUE)))
+  }
+  invisible(x)
+}
+
+#' @export
 residuals.fmrireg_cfals_fit <- function(object, ...) {
   object$residuals
 }
