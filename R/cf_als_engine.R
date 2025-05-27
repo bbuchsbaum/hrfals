@@ -8,6 +8,8 @@
 #' @param Y_proj numeric matrix of projected BOLD data (n x v)
 #' @param lambda_b ridge penalty for beta-update
 #' @param lambda_h ridge penalty for h-update
+#' @param lambda_init ridge penalty for initial LS+SVD step
+#' @param lambda_joint joint penalty for beta-h update
 #' @param R_mat_eff effective d x d penalty matrix for h-update. If NULL a
 #'   diagonal matrix is used.
 #' @param fullXtX_flag Logical. If `TRUE`, the h-update step uses the full
@@ -33,6 +35,8 @@
 cf_als_engine <- function(X_list_proj, Y_proj,
                           lambda_b = 10,
                           lambda_h = 1,
+                          lambda_init = 1,
+                          lambda_joint = 0,
                           R_mat_eff = NULL,
                           fullXtX_flag = FALSE,
                           precompute_xty_flag = TRUE,
@@ -42,23 +46,14 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8) {
 
-  stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
-  n <- nrow(Y_proj)
-  v <- ncol(Y_proj)
-  d <- ncol(X_list_proj[[1]])
-  k <- length(X_list_proj)
-  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
-    stop("`Phi_recon_matrix` must be a p x d matrix")
-  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
-    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
-  if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
-    stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
-  for (X in X_list_proj) {
-    if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
-    if (ncol(X) != d) stop("All design matrices must have the same column count")
-  }
-  if (lambda_b < 0 || lambda_h < 0) {
-    stop("lambda_b and lambda_h must be non-negative")
+  # Validate inputs and extract dimensions
+  dims <- validate_hrf_engine_inputs(X_list_proj, Y_proj, Phi_recon_matrix, h_ref_shape_canonical)
+  n <- dims$n
+  v <- dims$v
+  d <- dims$d
+  k <- dims$k
+  if (lambda_b < 0 || lambda_h < 0 || lambda_init < 0 || lambda_joint < 0) {
+    stop("lambda_b, lambda_h, lambda_init, and lambda_joint must be non-negative")
   }
 
   if (!is.null(R_mat_eff)) {
@@ -69,7 +64,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
 
 
   init <- ls_svd_engine(X_list_proj, Y_proj,
-                        lambda_init = 0,
+                        lambda_init = lambda_init,
                         Phi_recon_matrix = Phi_recon_matrix,
                         h_ref_shape_canonical = h_ref_shape_canonical,
                         epsilon_svd = epsilon_svd,
@@ -135,6 +130,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
         }
       }
+        # Apply joint ridge penalty to beta update
+        G_vx <- G_vx + lambda_joint * diag(k)
         b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
                                      eps = max(epsilon_svd, epsilon_scale))
     }
@@ -152,7 +149,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       }
 
       b_vx <- b_current[, vx]
-      lhs <- lambda_h * h_penalty_matrix
+      lhs <- lambda_h * h_penalty_matrix + lambda_joint * diag(d)
       rhs <- numeric(d)
       for (l in seq_len(k)) {
 
@@ -172,30 +169,34 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       }
       h_current[, vx] <- cholSolve(lhs, rhs,
                                    eps = max(epsilon_svd, epsilon_scale))
+      
+      # Fix A: Normalize h and scale beta to prevent scale drift
+      s <- max(abs(h_current[, vx]), epsilon_scale)
+      h_current[, vx] <- h_current[, vx] / s
+      b_current[, vx] <- b_current[, vx] * s
     }
 
     iter_final <- iter
-    if (max(abs(b_current - b_prev)) < 1e-6 &&
-        max(abs(h_current - h_prev)) < 1e-6) {
-      break
+    
+    # Check convergence based on parameter changes
+    # After scale normalization, this should work better
+    if (iter > 1) {
+      b_change <- max(abs(b_current - b_prev))
+      h_change <- max(abs(h_current - h_prev))
+      
+      # Since we normalize h, check relative changes
+      if (b_change < 1e-5 && h_change < 1e-5) {
+        break
+      }
     }
   }
 
-  H_shapes_iter <- Phi_recon_matrix %*% h_current
-  scl <- apply(abs(H_shapes_iter), 2, max)
-  flip <- rep(1.0, v)
-  align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
-  flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
-  eff_scl <- pmax(scl, epsilon_scale)
-  h_final <- sweep(h_current, 2, flip / eff_scl, "*")
-  b_final <- sweep(b_current, 2, flip * eff_scl, "*")
-  zero_idx <- scl <= epsilon_scale
-  if (any(zero_idx)) {
-    h_final[, zero_idx] <- 0
-    b_final[, zero_idx] <- 0
-  }
+  # Normalize and align HRF shapes
+  result <- normalize_and_align_hrf(h_current, b_current, Phi_recon_matrix, 
+                                   h_ref_shape_canonical, epsilon_scale,
+                                   Y_proj, X_list_proj)
 
-  attr(h_final, "iterations") <- iter_final
-  list(h = h_final, beta = b_final)
+  attr(result$h, "iterations") <- iter_final
+  list(h = result$h, beta = result$beta)
 }
 

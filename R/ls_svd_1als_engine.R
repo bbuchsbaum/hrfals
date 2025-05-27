@@ -9,6 +9,7 @@
 #' @param lambda_init ridge penalty for initial GLM solve
 #' @param lambda_b ridge penalty for \eqn{\beta}-update
 #' @param lambda_h ridge penalty for \eqn{h}-update
+#' @param lambda_joint joint penalty for \eqn{\beta} and \eqn{h} updates
 #' @param fullXtX_flag Logical. If `TRUE`, the h-update step uses the full
 #'   Gramian including cross-condition terms
 #'   \eqn{(\sum_l \beta_l X_l)^\top(\sum_m \beta_m X_m)}. If `FALSE` (default)
@@ -23,14 +24,15 @@
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
 #' @param R_mat optional penalty matrix for the h-update
-#' @return list with matrices `h` (d x v), `beta` (k x v) and the
-#'         initial estimates `h_ls_svd`, `beta_ls_svd`
+#' @return list with matrices `h` (d x v), `beta` (k x v), `Gamma_hat` (d*k x v)
+#'         and the initial estimates `h_ls_svd`, `beta_ls_svd`
 #' @keywords internal
 #' @noRd
 ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                lambda_init = 1,
                                lambda_b = 10,
                                lambda_h = 1,
+                               lambda_joint = 0,
                                fullXtX_flag = FALSE,
                                Phi_recon_matrix,
                                h_ref_shape_canonical,
@@ -39,16 +41,12 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                epsilon_scale = 1e-8,
                                R_mat = NULL) {
 
-  if (lambda_init < 0 || lambda_b < 0 || lambda_h < 0)
+  if (lambda_init < 0 || lambda_b < 0 || lambda_h < 0 || lambda_joint < 0)
     stop("Lambdas must be non-negative")
-  stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
-  d <- ncol(X_list_proj[[1]])
-  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
-    stop("`Phi_recon_matrix` must be a p x d matrix")
-  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
-    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
-  if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
-    stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
+  
+  # Validate inputs and extract dimensions
+  dims <- validate_hrf_engine_inputs(X_list_proj, Y_proj, Phi_recon_matrix, h_ref_shape_canonical)
+  d <- dims$d
 
   if (!is.null(R_mat)) {
     if (!is.matrix(R_mat) || nrow(R_mat) != d || ncol(R_mat) != d) {
@@ -66,9 +64,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
 
   h_current <- init$h
   b_current <- init$beta
-  k <- length(X_list_proj)
-  d <- ncol(X_list_proj[[1]])
-  v <- ncol(Y_proj)
+  k <- dims$k
+  v <- dims$v
 
   XtX_list <- lapply(X_list_proj, crossprod)
   XtY_list <- lapply(X_list_proj, function(X) crossprod(X, Y_proj))
@@ -102,6 +99,8 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
         crossprod(h_vx, XtX_list[[c]] %*% h_vx), numeric(1))
       G_vx <- diag(diag_vals, k)
     }
+      # Apply joint ridge penalty to beta update
+      G_vx <- G_vx + lambda_joint * diag(k)
       B_als[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
                                eps = max(epsilon_svd, epsilon_scale))
   }
@@ -111,7 +110,7 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
   for (vx in seq_len(v)) {
     b_vx <- b_current[, vx]
     penalty_mat <- if (is.null(R_mat)) diag(d) else R_mat
-    lhs <- lambda_h * penalty_mat
+    lhs <- lambda_h * penalty_mat + lambda_joint * diag(d)
     rhs <- numeric(d)
     for (l in seq_len(k)) {
       rhs <- rhs + b_vx[l] * XtY_list[[l]][, vx]
@@ -127,24 +126,12 @@ ls_svd_1als_engine <- function(X_list_proj, Y_proj,
                                eps = max(epsilon_svd, epsilon_scale))
   }
 
-  H_shapes_iter <- Phi_recon_matrix %*% H_als
-  scl <- apply(abs(H_shapes_iter), 2, max)
-  flip <- rep(1.0, v)
-  align_scores <- colSums(H_shapes_iter * h_ref_shape_canonical)
-  flip[align_scores < 0 & scl > epsilon_scale] <- -1.0
-  eff_scl <- pmax(scl, epsilon_scale)
-  H_final <- sweep(H_als, 2, flip / eff_scl, "*")
-  B_final <- sweep(B_als, 2, flip * eff_scl, "*")
-  zero_idx <- scl <= epsilon_scale
-  if (any(zero_idx)) {
-    H_final[, zero_idx] <- 0
-    B_final[, zero_idx] <- 0
-  }
+  # Normalize and align HRF shapes
+  result <- normalize_and_align_hrf(H_als, B_als, Phi_recon_matrix, 
+                                   h_ref_shape_canonical, epsilon_scale,
+                                   Y_proj, X_list_proj)
 
-  dimnames(H_final) <- list(NULL, colnames(Y_proj))
-  dimnames(B_final) <- list(names(X_list_proj), colnames(Y_proj))
-
-  list(h = H_final, beta = B_final,
-       h_ls_svd = init$h, beta_ls_svd = init$beta)
+  list(h = result$h, beta = result$beta,
+       h_ls_svd = init$h, beta_ls_svd = init$beta, Gamma_hat = init$Gamma_hat)
 }
 

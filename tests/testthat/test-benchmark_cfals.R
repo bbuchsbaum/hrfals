@@ -59,7 +59,6 @@ benchmark_cfals <- function() {
   on   <- design$onsets
   cond_id <- design$conditions
   
-
   
   for (i in seq_along(on)) {
     t_idx <- round(on[i] / TR) + 1

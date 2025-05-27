@@ -21,6 +21,9 @@
 #'   `ls_svd` based methods.
 #' @param lambda_b Ridge penalty for the beta update step.
 #' @param lambda_h Ridge penalty for the h update step.
+#' @param lambda_joint Joint ridge penalty applied to both beta and h updates.
+#'   This helps prevent see-saw effects between the two parameter blocks.
+#'   Recommended range: 0.2-2. Default is 0 (disabled).
 #' @param R_mat Optional penalty matrix for the h (HRF coefficient) update.
 #'   If `NULL` (default), an identity matrix is used, corresponding to a simple
 #'   ridge penalty. If a basis-specific penalty (e.g., for smoothing) is
@@ -77,6 +80,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                          lambda_init = 1,
                          lambda_b = 10,
                          lambda_h = 1,
+                         lambda_joint = 0,
                          R_mat = NULL,
                          fullXtX = FALSE,
                          precompute_xty_flag = TRUE,
@@ -119,6 +123,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
+                                     lambda_joint = lambda_joint,
                                      fullXtX_flag = fullXtX,
                                      Phi_recon_matrix = design$Phi_recon_matrix,
                                      h_ref_shape_canonical = design$h_ref_shape_canonical,
@@ -126,6 +131,7 @@ fmrireg_cfals <- function(fmri_data_obj,
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
+                           lambda_joint = lambda_joint,
                            R_mat_eff = R_mat,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
@@ -159,7 +165,8 @@ fmrireg_cfals <- function(fmri_data_obj,
                            method = method,
                            lambdas = c(init = lambda_init,
                                        beta = lambda_b,
-                                       h = lambda_h),
+                                       h = lambda_h,
+                                       joint = lambda_joint),
                            call = match.call(),
                            hrf_basis = hrf_basis,
                            design_info = list(d = design$d,

@@ -25,22 +25,13 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
                           epsilon_svd = 1e-8,
                           epsilon_scale = 1e-8) {
   svd_backend <- match.arg(svd_backend)
-  stopifnot(is.list(X_list_proj), length(X_list_proj) >= 1)
-  n <- nrow(Y_proj)
-  v <- ncol(Y_proj)
-  d <- ncol(X_list_proj[[1]])
-  k <- length(X_list_proj)
-  for (X in X_list_proj) {
-    if (nrow(X) != n) stop("Design matrices must have same rows as Y_proj")
-    if (ncol(X) != d) stop("All design matrices must have the same column count")
-  }
-
-  if (!is.matrix(Phi_recon_matrix) || ncol(Phi_recon_matrix) != d)
-    stop("`Phi_recon_matrix` must be a p x d matrix")
-  if (length(h_ref_shape_canonical) != nrow(Phi_recon_matrix))
-    stop("`h_ref_shape_canonical` must have length nrow(Phi_recon_matrix)")
-  if (abs(max(abs(h_ref_shape_canonical)) - 1) > 1e-6)
-    stop("`h_ref_shape_canonical` must be normalised to have max abs of 1")
+  
+  # Validate inputs and extract dimensions
+  dims <- validate_hrf_engine_inputs(X_list_proj, Y_proj, Phi_recon_matrix, h_ref_shape_canonical)
+  n <- dims$n
+  v <- dims$v
+  d <- dims$d
+  k <- dims$k
 
 
   Xbig <- do.call(cbind, X_list_proj)
@@ -62,23 +53,11 @@ ls_svd_engine <- function(X_list_proj, Y_proj, lambda_init = 1,
     }
   }
 
-  H_shapes <- Phi_recon_matrix %*% H_out
-  scl <- apply(abs(H_shapes), 2, max)
-  flip <- rep(1.0, v)
-  align <- colSums(H_shapes * h_ref_shape_canonical)
-  flip[align < 0 & scl > epsilon_scale] <- -1.0
-  eff_scl <- pmax(scl, epsilon_scale)
-  H_final <- sweep(H_out, 2, flip / eff_scl, "*")
-  B_final <- sweep(B_out, 2, flip * eff_scl, "*")
-  zero_idx <- scl <= epsilon_scale
-  if (any(zero_idx)) {
-    H_final[, zero_idx] <- 0
-    B_final[, zero_idx] <- 0
-  }
+  # Normalize and align HRF shapes
+  result <- normalize_and_align_hrf(H_out, B_out, Phi_recon_matrix, 
+                                   h_ref_shape_canonical, epsilon_scale,
+                                   Y_proj, X_list_proj)
 
-  dimnames(H_final) <- list(NULL, colnames(Y_proj))
-  dimnames(B_final) <- list(names(X_list_proj), colnames(Y_proj))
-
-  list(h = H_final, beta = B_final, Gamma_hat = Gamma_hat)
+  list(h = result$h, beta = result$beta, Gamma_hat = Gamma_hat)
 }
 

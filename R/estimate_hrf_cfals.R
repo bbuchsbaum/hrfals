@@ -13,6 +13,7 @@
 #' @param lambda_init Ridge penalty for initial LS solve.
 #' @param lambda_b Ridge penalty for the beta update.
 #' @param lambda_h Ridge penalty for the h update.
+#' @param lambda_joint Joint penalty for the h update.
 #' @param R_mat Either the character string "identity" (default) or
 #'   "basis_default" to indicate how the penalty matrix should be
 #'   constructed, or a numeric matrix providing a custom penalty for the
@@ -38,6 +39,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                lambda_init = 1,
                                lambda_b = 10,
                                lambda_h = 1,
+                               lambda_joint = 0,
                                R_mat = c("identity", "basis_default"),
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
@@ -86,6 +88,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                      lambda_init = lambda_init,
                                      lambda_b = lambda_b,
                                      lambda_h = lambda_h,
+                                     lambda_joint = lambda_joint,
                                      fullXtX_flag = fullXtX,
                                      Phi_recon_matrix = Phi,
                                      h_ref_shape_canonical = h_ref_shape_canonical,
@@ -93,6 +96,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
     cf_als = cf_als_engine(Xp, Yp,
                            lambda_b = lambda_b,
                            lambda_h = lambda_h,
+                           lambda_joint = lambda_joint,
                            R_mat_eff = R_eff,
                            fullXtX_flag = fullXtX,
                            precompute_xty_flag = precompute_xty_flag,
@@ -120,7 +124,8 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              method = method,
              lambdas = c(init = lambda_init,
                          beta = lambda_b,
-                         h = lambda_h),
+                         h = lambda_h,
+                         joint = lambda_joint),
              call = match.call(),
              fmrireg_hrf_basis_used = hrf_basis_for_cfals,
              target_event_term_name = target_event_term_name,
