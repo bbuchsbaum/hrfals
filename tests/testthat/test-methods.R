@@ -17,9 +17,9 @@ make_fmrireg_fit <- function() {
   beta <- matrix(rnorm(2), 1, 2)
   recon <- matrix(rnorm(4), 2, 2)
   dinfo <- list(d = 2, k = 1, n = 2, v = 2)
-  fmrireg_cfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-                    call("fmrireg_cfals"), fmrireg::HRF_SPMG1,
-                    dinfo, matrix(0, 1, 1), recon)
+  hrfals:::fmrireg_cfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
+                             call("fmrireg_cfals"), fmrireg::HRF_SPMG1,
+                             dinfo, matrix(0, 1, 1), recon)
 }
 
 
@@ -33,10 +33,11 @@ test_that("hrfals_fit methods run", {
 })
 
 
-test_that("fmrireg_cfals_fit methods run", {
+test_that("fmrireg_cfals_fit alias returns hrfals_fit", {
   fit <- make_fmrireg_fit()
-  expect_output(print(fit), "fmrireg CF-ALS Fit")
-  expect_output(print(summary(fit)), "Summary of fmrireg CF-ALS Fit")
+  expect_s3_class(fit, "hrfals_fit")
+  expect_output(print(fit), "hrfals Fit")
+  expect_output(print(summary(fit)), "Summary of hrfals Fit")
   pdf(NULL)
   expect_silent(plot(fit))
   dev.off()

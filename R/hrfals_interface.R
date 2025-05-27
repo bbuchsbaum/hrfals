@@ -29,7 +29,7 @@ hrfals_control_defaults <- function() {
 #' @param method Estimation engine to use. Passed to [fmrireg_cfals()].
 #' @param control List of control parameters overriding defaults.
 #' @param ... Additional arguments passed to [fmrireg_cfals()].
-#' @return An object of class `fmrireg_cfals_fit`.
+#' @return An object of class `hrfals_fit`.
 #' @export
 hrfals <- function(y, design, method = "cf_als", control = list(), ...) {
   ctrl <- modifyList(hrfals_control_defaults(), control)
