@@ -90,3 +90,74 @@ plot.hrfals_fit <- function(x, vox = 1, ...) {
        main = paste("Reconstructed HRF - voxel", vox), ...)
   invisible(hrf)
 }
+#' Tidy method for hrfals_fit objects
+#'
+#' Produces a data frame summarising beta amplitudes and optional goodness-of-fit
+#' statistics for each voxel.
+#'
+#' @param x An `hrfals_fit` object.
+#' @param ... Unused.
+#' @return A data frame with one row per voxel and columns for beta amplitudes
+#'   and R-squared values when available.
+#' @export
+#' @importFrom broom tidy
+#' @importFrom broom glance
+#' @importFrom ggplot2 autoplot
+#' @seealso [glance.hrfals_fit()]
+
+tidy.hrfals_fit <- function(x, ...) {
+  betas <- t(x$beta_amps)
+  if (!is.null(rownames(x$beta_amps))) {
+    colnames(betas) <- rownames(x$beta_amps)
+  } else {
+    colnames(betas) <- paste0("beta", seq_len(nrow(x$beta_amps)))
+  }
+  df <- as.data.frame(betas)
+  df$voxel <- seq_len(nrow(df))
+  if (!is.null(x$gof_per_voxel))
+    df$r2 <- x$gof_per_voxel
+  df
+}
+
+#' Glance method for hrfals_fit objects
+#'
+#' Returns a one-row summary with design information and mean goodness of fit.
+#'
+#' @inheritParams tidy.hrfals_fit
+#' @return A data frame summarising the fit.
+#' @export
+
+glance.hrfals_fit <- function(x, ...) {
+  info <- x$design_info
+  data.frame(
+    n_vox = info$v,
+    n_time = info$n,
+    n_cond = info$k,
+    basis_len = info$d,
+    lambda_beta = unname(x$lambdas["beta"]),
+    lambda_h = unname(x$lambdas["h"]),
+    r2_mean = if (!is.null(x$gof_per_voxel)) mean(x$gof_per_voxel, na.rm = TRUE) else NA_real_
+  )
+}
+
+#' Autoplot method for hrfals_fit objects
+#'
+#' Creates a ggplot showing the reconstructed HRF for a selected voxel.
+#'
+#' @inheritParams plot.hrfals_fit
+#' @return A `ggplot` object.
+#' @export
+#' @importFrom ggplot2 ggplot aes geom_line labs
+
+autoplot.hrfals_fit <- function(x, vox = 1, ...) {
+  if (is.null(x$phi_recon_matrix))
+    stop("phi_recon_matrix not available for plotting")
+  if (vox < 1 || vox > ncol(x$h_coeffs))
+    stop("'vox' out of range")
+  hrf <- as.vector(x$phi_recon_matrix %*% x$h_coeffs[, vox])
+  df <- data.frame(time = seq_along(hrf), amplitude = hrf)
+  ggplot2::ggplot(df, ggplot2::aes(x = time, y = amplitude)) +
+    ggplot2::geom_line() +
+    ggplot2::labs(title = paste("Reconstructed HRF - voxel", vox),
+         x = "Time index", y = "Amplitude")
+}

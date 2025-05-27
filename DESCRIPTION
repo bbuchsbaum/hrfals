@@ -10,7 +10,9 @@ Depends:
     R (>= 3.5.0)
 Imports:
     fmrireg (>= 0.0.0.9000),
-    Matrix
+    Matrix,
+    broom,
+    ggplot2
 Remotes:
     bbuchsbaum/fmrireg
 URL: https://github.com/bbuchsbaum/hrfals

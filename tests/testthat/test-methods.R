@@ -42,3 +42,17 @@ test_that("fmrireg_cfals_fit methods run", {
   dev.off()
 })
 
+
+test_that("tidy, glance and autoplot for hrfals_fit", {
+  fit <- make_hrfals_fit()
+  td <- tidy(fit)
+  expect_s3_class(td, "data.frame")
+  expect_equal(nrow(td), ncol(fit$h_coeffs))
+  gl <- glance(fit)
+  expect_s3_class(gl, "data.frame")
+  expect_equal(nrow(gl), 1)
+  pdf(NULL)
+  expect_silent(autoplot(fit))
+  dev.off()
+})
+
