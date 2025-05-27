@@ -338,6 +338,8 @@ arma::mat lss_kernel_cpp(const arma::mat& C,
   - Preserve whitening transformations in results
   - Integration with existing prewhitening workflows
   - Documentation of whitening effects on LSS estimates
+  - **Status**: Implemented in `lss_mode_a()`/`lss_mode_b()` via the `W`
+    argument and exposed through `hrfals_lss()`
 
 ### Performance Validation
 

@@ -63,3 +63,21 @@ test_that("lss_mode_b fallback to QR matches naive", {
                                 lambda_ridge = 0.1)
   expect_equal(res_fast, res_naive, tolerance = 1e-12)
 })
+
+# Prewhitening support
+test_that("lss_mode_b handles whitening matrix", {
+  dat <- simple_lss_b_data()
+  n <- nrow(dat$Y)
+  set.seed(2)
+  W <- chol(crossprod(matrix(rnorm(n*n), n, n)))
+  res_fast <- lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p,
+                         lambda_ridge = 0.1, W = W)
+  datW <- list(Y = W %*% dat$Y,
+               A = W %*% dat$A,
+               X = lapply(dat$X, function(X) W %*% X),
+               H = dat$H,
+               p = drop(W %*% dat$p))
+  res_naive <- naive_lss_mode_b(datW$Y, datW$A, datW$X, datW$H, datW$p,
+                                lambda_ridge = 0.1)
+  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+})

@@ -11,16 +11,20 @@
 #'   trial regressors.
 #' @param hrf_basis HRF basis object employed for the regressors.
 #' @param call Matched call to `hrfals_lss()`.
+#' @param whitening_matrix Optional whitening matrix applied prior to
+#'   estimation.
 #' @return An object of class `fastlss_fit`.
 #' @export
-fastlss_fit <- function(betas, mode, cfals_fit, events, hrf_basis, call = NULL) {
+fastlss_fit <- function(betas, mode, cfals_fit, events, hrf_basis,
+                        call = NULL, whitening_matrix = NULL) {
   out <- list(
     betas = betas,
     mode = mode,
     cfals_fit = cfals_fit,
     events = events,
     hrf_basis = hrf_basis,
-    call = call
+    call = call,
+    whitening_matrix = whitening_matrix
   )
   class(out) <- c("fastlss_fit", "list")
   out

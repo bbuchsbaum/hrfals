@@ -23,6 +23,8 @@
 #'   \code{TRUE}.
 #' @param mem_limit Optional memory limit in megabytes for automatic
 #'   chunking.
+#' @param W Optional whitening matrix applied to `Y`, `A` and each
+#'   onset matrix before running the kernel.
 #' @return Numeric matrix of trial coefficients (T x v).
 #' @export
 lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
@@ -30,7 +32,8 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
                        woodbury_thresh = 50,
                        chunk_size = NULL,
                        progress = FALSE,
-                       mem_limit = NULL) {
+                       mem_limit = NULL,
+                       W = NULL) {
   stopifnot(is.matrix(Y), is.matrix(A), is.list(X_onset_list),
             is.matrix(H_allvoxels))
   n <- nrow(Y)
@@ -47,6 +50,15 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
       stop("All onset matrices must have n rows")
   }
   m <- ncol(A)
+
+  if (!is.null(W)) {
+    if (!is.matrix(W) || nrow(W) != n || ncol(W) != n)
+      stop("'W' must be an n x n whitening matrix")
+    Y <- W %*% Y
+    A <- W %*% A
+    X_onset_list <- lapply(X_onset_list, function(X) W %*% X)
+    p_vec <- drop(W %*% p_vec)
+  }
 
   trial_names <- names(X_onset_list)
   if (is.null(trial_names))

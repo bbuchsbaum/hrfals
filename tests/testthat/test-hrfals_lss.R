@@ -16,3 +16,18 @@ test_that("hrfals_lss runs in both modes", {
                         mode = "auto")
   expect_equal(dim(B_auto$betas), c(length(dat$X_list), ncol(dat$Y)))
 })
+
+# Whitening support
+test_that("hrfals_lss stores whitening matrix", {
+  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
+                       method = "ls_svd_only")
+  n <- nrow(dat$Y)
+  set.seed(3)
+  W <- chol(crossprod(matrix(rnorm(n*n), n, n)))
+  res <- hrfals_lss(fit, dat$event_model, fmri_data_obj = dat$Y,
+                    mode = "shared", whitening_matrix = W)
+  expect_s3_class(res, "fastlss_fit")
+  expect_true(is.matrix(res$whitening_matrix))
+  expect_equal(res$whitening_matrix, W)
+})
