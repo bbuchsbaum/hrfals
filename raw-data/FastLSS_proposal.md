@@ -222,6 +222,7 @@ The proposed Woodbury-plus-BLAS-3 kernel is not just theoretically nicer; on com
   - Voxel loop parallelized (OpenMP in C++, mclapply in R)
   - Optional precomputation of trial regressors when RAM permits
   - Memory-efficient fallback for large datasets
+  - *Implemented `lss_mode_b()` in R with voxel-wise tests verifying equivalence to the naive algorithm.*
 
 ### Performance Optimization
 
