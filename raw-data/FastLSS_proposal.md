@@ -256,10 +256,45 @@ The proposed Woodbury-plus-BLAS-3 kernel is not just theoretically nicer; on com
 - **Effort**: 6 days
 - **Description**: Implement core LSS kernel in C++ with RcppArmadillo
 - **Acceptance Criteria**:
-  - Function `lss_kernel_cpp(C, A, Y, lambda_ridge, shared_C)` 
+  - Function `lss_kernel_cpp(C, A, Y, lambda_ridge, shared_C)`
   - Direct BLAS calls for maximum performance
   - OpenMP parallelization for voxel loops
   - Exception handling and input validation
+
+```cpp
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+arma::mat lss_kernel_cpp(const arma::mat& C,
+                         const arma::mat& A,
+                         const arma::mat& Y,
+                         double lambda_ridge = 0.0,
+                         bool shared_C = true) {
+  arma::mat AtA = A.t() * A;
+  if (lambda_ridge != 0.0)
+    AtA.diag() += lambda_ridge;
+
+  arma::mat P = arma::solve(AtA, A.t());
+  arma::mat Cres = C - A * (P * C);
+  arma::mat Yres = Y - A * (P * Y);
+
+  arma::uword Tt = Cres.n_cols;
+  arma::uword V  = Yres.n_cols;
+  arma::mat B(Tt, V, arma::fill::zeros);
+
+  #pragma omp parallel for
+  for (arma::uword t = 0; t < Tt; ++t) {
+    double denom = arma::dot(Cres.col(t), Cres.col(t));
+    if (denom != 0.0) {
+      arma::rowvec num = Cres.col(t).t() * Yres;
+      B.row(t) = num / denom;
+    }
+  }
+
+  return B;
+}
+```
+
+*Implemented `lss_kernel_cpp()` using RcppArmadillo with OpenMP support.*
 
 **Ticket LSS-007: R Wrapper Functions**
 - **Priority**: Medium
