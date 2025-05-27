@@ -11,6 +11,18 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// build_voxel_laplacian_cpp
+Rcpp::List build_voxel_laplacian_cpp(Rcpp::NumericVector volume, int connectivity);
+RcppExport SEXP _hrfals_build_voxel_laplacian_cpp(SEXP volumeSEXP, SEXP connectivitySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type volume(volumeSEXP);
+    Rcpp::traits::input_parameter< int >::type connectivity(connectivitySEXP);
+    rcpp_result_gen = Rcpp::wrap(build_voxel_laplacian_cpp(volume, connectivity));
+    return rcpp_result_gen;
+END_RCPP
+}
 // lss_kernel_cpp
 arma::mat lss_kernel_cpp(const arma::mat& C, const arma::mat& A, const arma::mat& Y, const arma::vec& p_vec, double lambda_ridge, bool shared_C, double eig_tol, double denom_tol, arma::uword block_size);
 RcppExport SEXP _hrfals_lss_kernel_cpp(SEXP CSEXP, SEXP ASEXP, SEXP YSEXP, SEXP p_vecSEXP, SEXP lambda_ridgeSEXP, SEXP shared_CSEXP, SEXP eig_tolSEXP, SEXP denom_tolSEXP, SEXP block_sizeSEXP) {
@@ -44,6 +56,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_hrfals_build_voxel_laplacian_cpp", (DL_FUNC) &_hrfals_build_voxel_laplacian_cpp, 2},
     {"_hrfals_lss_kernel_cpp", (DL_FUNC) &_hrfals_lss_kernel_cpp, 9},
     {"_hrfals_lss_check_conditioning", (DL_FUNC) &_hrfals_lss_check_conditioning, 2},
     {NULL, NULL, 0}

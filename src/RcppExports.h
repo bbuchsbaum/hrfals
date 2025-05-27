@@ -6,6 +6,8 @@
 #include <RcppArmadillo.h>
 #include <Rcpp.h>
 
-arma::mat lss_kernel_cpp(const arma::mat& C, const arma::mat& A, const arma::mat& Y, double lambda_ridge = 0.0, bool shared_C = true);
+Rcpp::List build_voxel_laplacian_cpp(Rcpp::NumericVector volume, int connectivity = 6);
+arma::mat lss_kernel_cpp(const arma::mat& C, const arma::mat& A, const arma::mat& Y, const arma::vec& p_vec, double lambda_ridge = 0.0, bool shared_C = true, double eig_tol = -1.0, double denom_tol = 1e-10, arma::uword block_size = 1000);
+Rcpp::List lss_check_conditioning(const arma::mat& A, double lambda_ridge = 0.0);
 
 #endif
