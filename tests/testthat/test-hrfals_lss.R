@@ -8,10 +8,11 @@ test_that("hrfals_lss runs in both modes", {
                        method = "ls_svd_only")
   B_shared <- hrfals_lss(fit, dat$event_model, fmri_data_obj = dat$Y,
                           mode = "shared")
-  expect_equal(nrow(B_shared), length(dat$X_list))
-  expect_equal(ncol(B_shared), ncol(dat$Y))
+  expect_s3_class(B_shared, "fastlss_fit")
+  expect_equal(nrow(B_shared$betas), length(dat$X_list))
+  expect_equal(ncol(B_shared$betas), ncol(dat$Y))
 
   B_auto <- hrfals_lss(fit, dat$event_model, fmri_data_obj = dat$Y,
                         mode = "auto")
-  expect_equal(dim(B_auto), c(length(dat$X_list), ncol(dat$Y)))
+  expect_equal(dim(B_auto$betas), c(length(dat$X_list), ncol(dat$Y)))
 })
