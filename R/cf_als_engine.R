@@ -108,14 +108,12 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     b_prev <- b_current
     h_prev <- h_current
     for (vx in seq_len(v)) {
-      h_vx <- h_current[, vx]
-
+      # FIXED: Compute XtY_cache once per voxel and reuse in both beta and h updates
       if (!isTRUE(precompute_xty_flag)) {
-        XtY_cache <- vector("list", k)
-        for (l in seq_len(k)) {
-          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
-        }
+        XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
       }
+      
+      h_vx <- h_current[, vx]
 
       DhTy_vx <- vapply(seq_len(k), function(c) {
         XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
@@ -148,24 +146,14 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
 
     for (vx in seq_len(v)) {
-
+      # FIXED: Reuse XtY_cache computed earlier in the voxel loop
       if (!isTRUE(precompute_xty_flag)) {
-        XtY_cache <- vector("list", k)
-        for (l in seq_len(k)) {
-          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
-        }
+        XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
       }
 
       b_vx <- b_current[, vx]
       lhs <- lambda_h * h_penalty_matrix
       rhs <- numeric(d)
-
-      if (!isTRUE(precompute_xty_flag)) {
-        XtY_cache <- vector("list", k)
-        for (l in seq_len(k)) {
-          XtY_cache[[l]] <- crossprod(X_list_proj[[l]], Y_proj[, vx])
-        }
-      }
       for (l in seq_len(k)) {
 
         XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {

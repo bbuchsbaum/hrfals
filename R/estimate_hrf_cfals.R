@@ -41,7 +41,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                R_mat = c("identity", "basis_default"),
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
-                               max_alt = 1,
+                               max_alt = 10,
                                hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
                                hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
                                ...) {
