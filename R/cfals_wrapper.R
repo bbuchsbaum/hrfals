@@ -325,7 +325,7 @@ hrfals <- function(fmri_data_obj,
                    max_alt = 1,
                    ...) {
   target_term <- names(event_model$terms)[1]
-  penalty_type <- if (is.null(R_mat)) "identity" else "custom"
+  R_mat_param <- if (is.null(R_mat)) "identity" else R_mat
   estimate_hrf_cfals(fmri_data_obj,
                      fmrireg_event_model = event_model,
                      target_event_term_name = target_term,
@@ -334,8 +334,7 @@ hrfals <- function(fmri_data_obj,
                      method = "cf_als",
                      lambda_b = lam_beta,
                      lambda_h = lam_h,
-                     penalty_R_mat_type = penalty_type,
-                     R_mat = R_mat,
+                     R_mat = R_mat_param,
                      fullXtX = fullXtX,
                      max_alt = max_alt,
                      ...)

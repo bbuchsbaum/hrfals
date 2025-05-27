@@ -77,6 +77,6 @@ test_that("lss_mode_b handles rank-deficient A", {
                          lambda_ridge = lambda)
   res_naive <- naive_lss_mode_b_rd(Y, A, X_onset_list, H_allvoxels, p_vec,
                                    lambda_ridge = lambda)
-  expect_equal(res_fast, res_naive, tolerance = 1e-9)
+  expect_equal(unname(res_fast), unname(res_naive), tolerance = 1e-9)
   expect_true(all(is.finite(res_fast)))
 })

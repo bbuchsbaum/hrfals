@@ -55,11 +55,11 @@ test_that("hrfals wrapper supports multiple methods", {
   methods <- c("ls_svd_only", "ls_svd_1als", "cf_als")
   for (m in methods) {
     fit <- suppressWarnings(
-      hrfals(dat$Y, design, method = m,
-             control = list(lambda_b = 0.1,
-                            lambda_h = 0.1,
-                            lambda_init = 0.5,
-                            max_alt = 1)))
+      hrfals_from_design(dat$Y, design, method = m,
+                         control = list(lambda_b = 0.1,
+                                        lambda_h = 0.1,
+                                        lambda_init = 0.5,
+                                        max_alt = 1)))
     expect_equal(dim(fit$h_coeffs), c(nbasis(HRF_SPMG3), ncol(dat$Y)))
     expect_equal(dim(fit$beta_amps), c(length(dat$X_list), ncol(dat$Y)))
   }
@@ -124,11 +124,11 @@ test_that("fullXtX argument is forwarded through hrfals", {
                                Phi_recon_matrix = design$Phi_recon_matrix,
                                h_ref_shape_canonical = design$h_ref_shape_canonical)
   wrap <- suppressWarnings(
-    hrfals(dat$Y, design, method = "ls_svd_1als",
-           control = list(fullXtX = TRUE,
-                          lambda_init = 0,
-                          lambda_b = 0.1,
-                          lambda_h = 0.1)))
+    hrfals_from_design(dat$Y, design, method = "ls_svd_1als",
+                       control = list(fullXtX = TRUE,
+                                      lambda_init = 0,
+                                      lambda_b = 0.1,
+                                      lambda_h = 0.1)))
   expect_equal(wrap$h_coeffs, direct$h)
   expect_equal(wrap$beta_amps, direct$beta)
 })
@@ -137,14 +137,6 @@ test_that("fullXtX argument is forwarded through hrfals", {
 test_that("hrfals predictions match canonical GLM", {
   set.seed(123)
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-
-  design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
-  fit <- suppressWarnings(
-    hrfals(dat$Y, design,
-           method = "cf_als",
-           control = list(lambda_b = 0,
-                          lambda_h = 0,
-                          max_alt = 1)))
 
   fit <- hrfals(dat$Y, dat$event_model, HRF_SPMG3,
                 lam_beta = 0,

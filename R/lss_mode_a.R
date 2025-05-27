@@ -23,6 +23,7 @@
 #'   chunking.
 #' @param W Optional whitening matrix to apply to `Y`, `A` and `C`
 #'   before running the kernel.
+#' @param use_cpp Logical; use the enhanced C++ implementation when TRUE.
 #' @return A numeric matrix of trial coefficients (T x v).
 #' @export
 lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
@@ -30,7 +31,8 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
                        chunk_size = NULL,
                        progress = FALSE,
                        mem_limit = NULL,
-                       W = NULL) {
+                       W = NULL,
+                       use_cpp = FALSE) {
   stopifnot(is.matrix(Y), is.matrix(A), is.matrix(C))
   n <- nrow(Y)
   if (nrow(A) != n || nrow(C) != n)
@@ -49,6 +51,16 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
 
   m <- ncol(A)
   Tt <- ncol(C)
+
+  # Use enhanced C++ implementation if requested
+  if (use_cpp) {
+    if (!is.null(chunk_size) || !is.null(mem_limit) || progress) {
+      warning("C++ implementation ignores chunk_size, mem_limit, and progress arguments")
+    }
+    B <- lss_kernel_cpp(C, A, Y, p_vec, lambda_ridge = lambda_ridge, shared_C = TRUE)
+    dimnames(B) <- list(colnames(C), colnames(Y))
+    return(B)
+  }
 
   if (!is.null(mem_limit) && is.null(chunk_size)) {
     bytes_limit <- mem_limit * 1024^2

@@ -60,6 +60,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     if (!is.matrix(R_mat_eff) || nrow(R_mat_eff) != d || ncol(R_mat_eff) != d) {
       stop(paste("R_mat_eff must be a d x d matrix, where d is", d))
     }
+    # Force penalty matrix to be symmetric for numerical stability
+    R_mat_eff <- as.matrix(Matrix::forceSymmetric(R_mat_eff))
   }
 
 
@@ -189,7 +191,9 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     beta_pen <- lambda_b * sum(b_current^2)
     R_eff <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
     h_pen <- lambda_h * sum(colSums(h_current * (R_eff %*% h_current)))
-    obj_trace[iter] <- SSE_iter + beta_pen + h_pen
+    # Include joint ridge penalty in objective
+    joint_pen <- lambda_joint * (sum(b_current^2) + sum(h_current^2))
+    obj_trace[iter] <- SSE_iter + beta_pen + h_pen + joint_pen
 
     iter_final <- iter
     

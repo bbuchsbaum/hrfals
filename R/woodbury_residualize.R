@@ -28,6 +28,12 @@ woodbury_residualize <- function(C, A, lambda_ridge = 0) {
     stop("C and A must have the same number of rows")
   }
   m <- ncol(A)
+  
+  # Handle case where A has no columns (no confounds to residualize)
+  if (m == 0) {
+    return(C)
+  }
+  
   AtA <- crossprod(A)
   if (lambda_ridge != 0) {
     AtA <- AtA + lambda_ridge * diag(m)
@@ -51,6 +57,12 @@ woodbury_residualize <- function(C, A, lambda_ridge = 0) {
 #' @keywords internal
 qr_residualize <- function(C, A, lapack_qr = FALSE) {
   stopifnot(is.matrix(C), is.matrix(A))
+  
+  # Handle case where A has no columns (no confounds to residualize)
+  if (ncol(A) == 0) {
+    return(C)
+  }
+  
   qrA <- qr(A, LAPACK = lapack_qr)
   qr.resid(qrA, C)
 }

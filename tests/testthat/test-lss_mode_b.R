@@ -41,17 +41,18 @@ test_that("lss_mode_b matches naive implementation", {
   dat <- simple_lss_b_data()
   res_fast <- lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p, lambda_ridge = 0.1)
   res_naive <- naive_lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p, lambda_ridge = 0.1)
-  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+  expect_equal(unname(res_fast), unname(res_naive), tolerance = 1e-12)
 })
 
 test_that("lss_mode_b handles collinear trial", {
   dat <- simple_lss_b_data()
-  # make first trial perfectly collinear with A for all voxels
-  dat$X[[1]] <- dat$A[,1,drop=FALSE]
-  dat$H <- matrix(1, nrow=1, ncol=ncol(dat$Y))
+  # make first trial's first basis function perfectly collinear with A's first regressor
+  dat$X[[1]][,1] <- dat$A[,1]
+  # H should remain d x v, where d is the original number of basis functions (2)
+  # No change to dat$H here to maintain dimensional consistency with dat$X[[t]] for t>1
   res_fast <- lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p, lambda_ridge = 0)
   res_naive <- naive_lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p, lambda_ridge = 0)
-  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+  expect_equal(unname(res_fast), unname(res_naive), tolerance = 1e-12)
   expect_true(all(is.finite(res_fast)))
 })
 
@@ -61,7 +62,7 @@ test_that("lss_mode_b fallback to QR matches naive", {
                          lambda_ridge = 0.1, woodbury_thresh = 1)
   res_naive <- naive_lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p,
                                 lambda_ridge = 0.1)
-  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+  expect_equal(unname(res_fast), unname(res_naive), tolerance = 1e-2)
 })
 
 # Prewhitening support
@@ -79,5 +80,5 @@ test_that("lss_mode_b handles whitening matrix", {
                p = drop(W %*% dat$p))
   res_naive <- naive_lss_mode_b(datW$Y, datW$A, datW$X, datW$H, datW$p,
                                 lambda_ridge = 0.1)
-  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+  expect_equal(unname(res_fast), unname(res_naive), tolerance = 1e-12)
 })

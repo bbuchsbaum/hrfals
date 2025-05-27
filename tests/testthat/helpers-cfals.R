@@ -1,11 +1,11 @@
 simulate_cfals_wrapper_data <- function(hrf_basis, noise_sd = 0.05, signal_scale = 1) {
-  sf <- sampling_frame(blocklens = 60, TR = 1)
+  sf <- fmrireg::sampling_frame(blocklens = 60, TR = 1)
   events <- data.frame(
     onset = c(5, 15, 30, 45),
     condition = factor(c("A", "A", "B", "B")),
     block = 1
   )
-  emod <- event_model(onset ~ hrf(condition), data = events,
+  emod <- fmrireg::event_model(onset ~ fmrireg::hrf(condition), data = events,
                       block = ~ block, sampling_frame = sf)
   # Use create_fmri_design to properly create design matrices
   design <- create_fmri_design(emod, hrf_basis)
@@ -14,7 +14,7 @@ simulate_cfals_wrapper_data <- function(hrf_basis, noise_sd = 0.05, signal_scale
   d <- design$d
   k <- design$k
   v <- 2
-  n_timepoints <- length(samples(sf, global = TRUE))
+  n_timepoints <- length(fmrireg::samples(sf, global = TRUE))
   
   h_true <- matrix(rnorm(d * v), d, v) * signal_scale
   beta_true <- matrix(rnorm(k * v), k, v) * signal_scale

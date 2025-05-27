@@ -4,8 +4,8 @@ library(fmrireg)
 
 test_that("hrfals_lss runs in both modes", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
-                       method = "ls_svd_only")
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                           method = "ls_svd_only")
   B_shared <- hrfals_lss(fit, dat$event_model, fmri_data_obj = dat$Y,
                           mode = "shared")
   expect_s3_class(B_shared, "fastlss_fit")
@@ -20,8 +20,8 @@ test_that("hrfals_lss runs in both modes", {
 # Whitening support
 test_that("hrfals_lss stores whitening matrix", {
   dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit <- fmrireg_cfals(dat$Y, dat$event_model, HRF_SPMG3,
-                       method = "ls_svd_only")
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+                           method = "ls_svd_only")
   n <- nrow(dat$Y)
   set.seed(3)
   W <- chol(crossprod(matrix(rnorm(n*n), n, n)))
