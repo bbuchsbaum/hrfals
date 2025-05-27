@@ -25,18 +25,12 @@ test_that("cfals wrappers work with simulated dataset", {
   nvox <- ncol(Y)
   k <- length(unique(events$condition))
 
-  fit1 <- suppressWarnings(
-    fmrireg_cfals(Y, emod, fmrireg::HRF_SPMG2,
-                  lambda_b = 0.1, lambda_h = 0.1))
   fit2 <- hrfals(Y, emod, fmrireg::HRF_SPMG2,
                  lam_beta = 0.1, lam_h = 0.1)
   fit3 <- estimate_hrf_cfals(Y, emod, "hrf(condition)",
                              fmrireg::HRF_SPMG2,
                              lambda_b = 0.1, lambda_h = 0.1)
 
-  expect_equal(dim(fit1$h_coeffs), c(nb, nvox))
-  expect_equal(dim(fit1$beta_amps), c(k, nvox))
-  expect_true(mean(fit1$gof_per_voxel) > 0)
   expect_equal(dim(fit2$h_coeffs), c(nb, nvox))
   expect_true(mean(fit2$gof_per_voxel) > 0)
   expect_equal(dim(fit3$h_coeffs), c(nb, nvox))

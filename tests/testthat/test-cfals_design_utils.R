@@ -147,26 +147,5 @@ test_that("create_cfals_design works without confounds", {
   expect_true(all(c("conditionA", "conditionB") %in% res$condition_names))
 })
 
-test_that("deprecated function still works with warning", {
-  sf <- sampling_frame(20, TR = 1)
-  events <- data.frame(onset = c(2, 6, 12),
-                       condition = factor(c("A", "B", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-  Y <- matrix(rnorm(20 * 2), 20, 2)
-  
-  expect_warning(
-    res <- prepare_cfals_inputs_from_fmrireg_term(Y, emod, HRF_SPMG3),
-    "deprecated"
-  )
-  
-  expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
-  expect_equal(res$k_conditions, 2)
-})
 
-test_that("defunct create_cfals_design_from_model errors", {
-  expect_error(create_cfals_design_from_model(), "has been removed")
-})
 
