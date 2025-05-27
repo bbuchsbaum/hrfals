@@ -15,5 +15,5 @@
 }
 \description{
 Basic utilities for inspecting the results
-of `fmrireg_hrf_cfals`.
+of `hrfals`.
 }
