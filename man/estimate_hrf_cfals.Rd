@@ -14,8 +14,7 @@ estimate_hrf_cfals(
   lambda_init = 1,
   lambda_b = 10,
   lambda_h = 1,
-  penalty_R_mat_type = c("identity", "basis_default", "custom"),
-  R_mat = NULL,
+  R_mat = c("identity", "basis_default"),
   fullXtX = FALSE,
   precompute_xty_flag = TRUE,
   max_alt = 1,
@@ -43,10 +42,10 @@ estimate_hrf_cfals(
 
 \item{lambda_h}{Ridge penalty for the h update.}
 
-\item{penalty_R_mat_type}{How to construct the penalty matrix. One of
-"identity", "basis_default", or "custom". If "custom", supply `R_mat`.}
-
-\item{R_mat}{Optional custom penalty matrix for the h update.}
+\item{R_mat}{Either the string \code{"identity"} (default) or
+\code{"basis_default"} to request an automatically generated penalty
+matrix, or a numeric matrix specifying a custom penalty for the h
+update.}
 
 \item{fullXtX}{Logical. If `TRUE`, the h-update step uses the full
 Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)}
