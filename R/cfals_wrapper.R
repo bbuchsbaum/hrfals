@@ -71,7 +71,7 @@
 #' fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
 #' print(fit)
 #' }
-#' @export
+#' @keywords internal
 fmrireg_cfals <- function(fmri_data_obj,
                          event_model,
                          hrf_basis,
@@ -341,13 +341,13 @@ hrfals <- function(fmri_data_obj,
                      ...)
 }
 
-#' @export
+#' @keywords internal
 fmrireg_cfals <- function(...) {
   .Deprecated("hrfals")
   hrfals(...)
 }
 
-#' @export
+#' @keywords internal
 fmrireg_hrf_cfals <- function(...) {
   .Deprecated("hrfals")
   hrfals(...)

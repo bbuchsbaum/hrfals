@@ -38,7 +38,9 @@
 #' print(fit)
 #' }
 #' @keywords internal
+
 fmrireg_cfals_fit <- hrfals_fit
+
 
 #' Methods for fmrireg_cfals_fit Objects
 #'

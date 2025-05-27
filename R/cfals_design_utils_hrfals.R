@@ -143,7 +143,7 @@ create_cfals_design <- function(fmri_data_obj,
 #' removed.  Users should instead call [create_cfals_design()] with an
 #' `event_model` and HRF basis.
 #'
-#' @export
+#' @keywords internal
 create_cfals_design_from_model <- function(...) {
   .Defunct("create_cfals_design",
           msg = "'create_cfals_design_from_model' has been removed.\n",
@@ -153,7 +153,7 @@ create_cfals_design_from_model <- function(...) {
 #' Legacy function name for backward compatibility
 #'
 #' @param ... Arguments passed to create_cfals_design
-#' @export
+#' @keywords internal
 prepare_cfals_inputs_from_fmrireg_term <- function(...) {
   .Deprecated("create_cfals_design", 
               msg = "prepare_cfals_inputs_from_fmrireg_term is deprecated. Use create_cfals_design instead.")
