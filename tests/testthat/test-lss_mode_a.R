@@ -45,3 +45,12 @@ test_that("lss_mode_a handles collinear trial", {
   res_naive <- naive_lss_mode_a(dat$Y, dat$A, dat$C, dat$p, lambda_ridge = 0)
   expect_equal(res_fast, res_naive, tolerance = 1e-12)
 })
+
+test_that("lss_mode_a fallback to QR matches naive", {
+  dat <- simple_lss_data()
+  res_fast <- lss_mode_a(dat$Y, dat$A, dat$C, dat$p,
+                         lambda_ridge = 0.1, woodbury_thresh = 1)
+  res_naive <- naive_lss_mode_a(dat$Y, dat$A, dat$C, dat$p,
+                                lambda_ridge = 0.1)
+  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+})

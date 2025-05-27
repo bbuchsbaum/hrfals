@@ -12,9 +12,12 @@
 #' @param p_vec Numeric vector of length n as described in the proposal.
 #' @param lambda_ridge Optional ridge penalty when computing the
 #'   pseudoinverse of \code{A}.
+#' @param woodbury_thresh Threshold for switching from Woodbury to
+#'   QR-based residualisation. See \code{auto_residualize}.
 #' @return A numeric matrix of trial coefficients (T x v).
 #' @export
-lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0) {
+lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
+                       woodbury_thresh = 50) {
   stopifnot(is.matrix(Y), is.matrix(A), is.matrix(C))
   n <- nrow(Y)
   if (nrow(A) != n || nrow(C) != n)
@@ -25,13 +28,8 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0) {
   m <- ncol(A)
   Tt <- ncol(C)
 
-  AtA <- crossprod(A)
-  if (lambda_ridge != 0)
-    AtA <- AtA + lambda_ridge * diag(m)
-  P <- cholSolve(AtA, t(A))
-
-  U <- P %*% C            # m x T
-  V <- C - A %*% U        # n x T
+  V <- auto_residualize(C, A, lambda_ridge,
+                        woodbury_thresh = woodbury_thresh)
 
   pc_row <- drop(crossprod(p_vec, C))     # length T
   cv_row <- colSums(V * V)

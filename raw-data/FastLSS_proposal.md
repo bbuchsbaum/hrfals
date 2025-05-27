@@ -235,6 +235,9 @@ The proposed Woodbury-plus-BLAS-3 kernel is not just theoretically nicer; on com
   - Fallback to current projector method when appropriate
   - Link to optimized BLAS (OpenBLAS/MKL) with proper threading
   - Benchmark suite comparing BLAS implementations
+  - *Implemented `auto_residualize()` and `configure_blas()` in R. Both
+    LSS modes now switch to QR projection automatically when `m` exceeds
+    a threshold, and thread-aware BLAS configuration is exposed.*
 
 **Ticket LSS-005: Memory Management and Large Dataset Support**
 - **Priority**: Medium
