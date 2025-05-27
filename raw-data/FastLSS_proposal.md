@@ -305,6 +305,7 @@ arma::mat lss_kernel_cpp(const arma::mat& C,
   - Auto-detection of shared vs. voxel-specific mode
   - Proper handling of fMRI data structures (fmri_dataset, event_model)
   - Comprehensive parameter validation and error messages
+*Implemented `hrfals_lss()` wrapper integrating CF-ALS outputs and automatic mode detection.
 
 ### Integration and Testing
 
