@@ -38,18 +38,14 @@ hrfals <- function(y, design, method = "cf_als", control = list(), ...) {
     stop("'design' must contain 'event_model' and 'hrf_basis' components")
   }
 
-  fmrireg_cfals(
+  hrfals(
     fmri_data_obj = y,
     event_model = design$event_model,
     hrf_basis = design$hrf_basis,
-    method = method,
-    lambda_init = ctrl$lambda_init,
-    lambda_b = ctrl$lambda_b,
-    lambda_h = ctrl$lambda_h,
-    lambda_joint = ctrl$lambda_joint,
+    lam_beta = ctrl$lambda_b,
+    lam_h = ctrl$lambda_h,
     R_mat = ctrl$R_mat,
     fullXtX = ctrl$fullXtX,
-    precompute_xty_flag = ctrl$precompute_xty_flag,
     max_alt = ctrl$max_alt,
     ...
   )
