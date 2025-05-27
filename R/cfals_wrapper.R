@@ -310,12 +310,15 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' \code{hrfals_fit} object.
 #'
 #' @inheritParams fmrireg_hrf_cfals
+#' @param baseline_model Optional baseline model to project out alongside
+#'   `confound_obj`.
 #' @return An object of class \code{hrfals_fit}.
 #' @export
 hrfals <- function(fmri_data_obj,
                    event_model,
                    hrf_basis,
                    confound_obj = NULL,
+                   baseline_model = NULL,
                    lam_beta = 10,
                    lam_h = 1,
                    lambda_s = 0,
@@ -334,6 +337,7 @@ hrfals <- function(fmri_data_obj,
                      target_event_term_name = target_term,
                      hrf_basis_for_cfals = hrf_basis,
                      confound_obj = confound_obj,
+                     baseline_model = baseline_model,
                      method = "cf_als",
                      lambda_b = lam_beta,
                      lambda_h = lam_h,

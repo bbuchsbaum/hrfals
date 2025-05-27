@@ -11,6 +11,7 @@
 #'   matching the data used for CF-ALS.
 #' @param confound_obj Optional confound matrix with the same number of
 #'   rows as `fmri_data_obj`.
+#' @param baseline_model Optional baseline model for confound projection.
 #' @param mode Character string specifying the LSS kernel variant.
 #'   If "auto" (default) the function selects "shared" when
 #'   a single HRF is present in `cf_fit$h_coeffs` and "voxel" otherwise.
@@ -23,6 +24,7 @@
 #' @export
 hrfals_lss <- function(cf_fit, events, fmri_data_obj,
                        confound_obj = NULL,
+                       baseline_model = NULL,
                        mode = c("auto", "shared", "voxel"),
                        whitening_matrix = NULL,
                        ...) {
@@ -53,7 +55,8 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
     stop("cf_fit must contain 'fmrireg_hrf_basis_used'")
 
   design <- create_cfals_design(fmri_data_obj, event_model, basis,
-                                confound_obj = confound_obj)
+                                confound_obj = confound_obj,
+                                baseline_model = baseline_model)
   Y <- design$Y_proj
   X_list <- design$X_list_proj
 

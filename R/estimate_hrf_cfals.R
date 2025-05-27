@@ -9,6 +9,8 @@
 #' @param target_event_term_name Name of the event_term to estimate.
 #' @param hrf_basis_for_cfals An `HRF` object with `nbasis > 1`.
 #' @param confound_obj Optional confound matrix.
+#' @param baseline_model Optional baseline model whose design matrix is
+#'   projected along with `confound_obj`.
 #' @param method Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").
 #' @param lambda_init Ridge penalty for initial LS solve.
 #' @param lambda_b Ridge penalty for the beta update.
@@ -49,6 +51,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                target_event_term_name,
                                hrf_basis_for_cfals,
                                confound_obj = NULL,
+                               baseline_model = NULL,
                                method = c("ls_svd_1als", "ls_svd_only", "cf_als"),
                                lambda_init = 1,
                                lambda_b = 10,
@@ -72,6 +75,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                              fmrireg_event_model,
                              hrf_basis_for_cfals,
                              confound_obj = confound_obj,
+                             baseline_model = baseline_model,
                              hrf_shape_duration_sec = hrf_shape_duration,
                              hrf_shape_sample_res_sec = hrf_shape_resolution)
 
