@@ -40,7 +40,7 @@
 #' @param max_alt Number of alternating updates after initialisation
 #'   when `method = "cf_als"`.
 #' @param ... Additional arguments passed to the underlying estimation engine.
-#' @return An object of class `fmrireg_cfals_fit` containing the
+#' @return An object of class `hrfals_fit` containing the
 #'   estimated HRF coefficients and amplitudes.
 #' @details
 #' The `method` argument selects between the closed-form
@@ -160,7 +160,7 @@ fmrireg_cfals <- function(fmri_data_obj,
   SSE <- colSums(resids^2)
   r2 <- 1 - SSE / SST
 
-  out <- fmrireg_cfals_fit(h_coeffs = fit$h,
+  out <- hrfals_fit(h_coeffs = fit$h,
                            beta_amps = fit$beta,
                            method = method,
                            lambdas = c(init = lambda_init,
@@ -168,7 +168,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                                        h = lambda_h,
                                        joint = lambda_joint),
                            call = match.call(),
-                           hrf_basis = hrf_basis,
+                           fmrireg_hrf_basis_used = hrf_basis,
                            design_info = list(d = design$d,
                                               k = design$k,
                                               n = n,
@@ -222,7 +222,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #'   Defaults to 1.
 #' @param ... Additional arguments passed to the underlying estimation engine.
 #'
-#' @return An object of class `fmrireg_cfals_fit`. This object contains:
+#' @return An object of class `hrfals_fit`. This object contains:
 #'   \itemize{
 #'     \item `h`: A d x v matrix of HRF basis coefficients (d = number of basis functions, v = number of voxels).
 #'     \item `beta`: A k x v matrix of condition amplitudes (k = number of conditions).
@@ -232,7 +232,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #'     \item `lambdas_used`: A named list or vector containing the regularization parameters (`lam_beta`, `lam_h`) used in the estimation.
 #'     \item `design_info`: A list containing dimensions and flags used during estimation (e.g., d, k, n, v, `fullXtX`).
 #'     \item `gof_per_voxel`: Optional. Goodness-of-fit statistics per voxel, such as R-squared.
-#'     \item (Other elements as defined by the `fmrireg_cfals_fit` class structure from the proposal, like `call`).
+#'     \item (Other elements as defined by the `hrfals_fit` class structure from the proposal, like `call`).
 #'   }
 #'
 #' @details

@@ -38,22 +38,9 @@
 #' print(fit)
 #' }
 #' @keywords internal
-fmrireg_cfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
-                              hrf_basis, design_info, residuals,
-                              recon_hrf = NULL, gof = NULL) {
-  out <- list(h_coeffs = h_coeffs,
-              beta_amps = beta_amps,
-              method_used = method,
-              lambdas = lambdas,
-              call = call,
-              hrf_basis_used = hrf_basis,
-              design_info = design_info,
-              residuals = residuals,
-              reconstructed_hrfs = recon_hrf,
-              gof_per_voxel = gof)
-  class(out) <- c("fmrireg_cfals_fit", "list")
-  out
-}
+
+fmrireg_cfals_fit <- hrfals_fit
+
 
 #' Methods for fmrireg_cfals_fit Objects
 #'
