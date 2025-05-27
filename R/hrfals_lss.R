@@ -16,7 +16,8 @@
 #'   a single HRF is present in `cf_fit$h_coeffs` and "voxel" otherwise.
 #' @param ... Additional arguments passed to [lss_mode_a()] or
 #'   [lss_mode_b()].
-#' @return Numeric matrix of trial coefficients (T x V).
+#' @return An object of class `fastlss_fit` containing the trial
+#'   coefficient matrix and metadata.
 #' @export
 hrfals_lss <- function(cf_fit, events, fmri_data_obj,
                        confound_obj = NULL,
@@ -73,5 +74,7 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
   }
 
   dimnames(B) <- list(names(X_list), colnames(Y))
-  B
+  fastlss_fit(B, mode = mode, cfals_fit = cf_fit,
+              events = events, hrf_basis = basis,
+              call = match.call())
 }
