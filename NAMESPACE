@@ -38,3 +38,7 @@ export(benchmark_fastlss)
 S3method(print,fastlss_fit)
 S3method(summary,fastlss_fit)
 S3method(print,summary.fastlss_fit)
+
+importFrom(Matrix,Diagonal)
+importFrom(Matrix,sparseMatrix)
+export(build_voxel_laplacian)
