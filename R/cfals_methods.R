@@ -37,7 +37,7 @@
 #' fit <- fmrireg_cfals(Y, emod, HRF_SPMG3)
 #' print(fit)
 #' }
-#' @export
+#' @keywords internal
 fmrireg_cfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
                               hrf_basis, design_info, residuals,
                               recon_hrf = NULL, gof = NULL) {

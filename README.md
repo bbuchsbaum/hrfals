@@ -56,7 +56,6 @@ print(cfals_fit)
 ## Main Functions
 
 - `hrfals()`: Main user-facing function for CF-ALS HRF estimation
-- `fmrireg_cfals()` (deprecated): General wrapper supporting multiple estimation methods
 - `create_cfals_design()`: Design matrix creation leveraging fmrireg functionality
 - `estimate_hrf_cfals()`: Lower-level estimation function for single event terms
 
