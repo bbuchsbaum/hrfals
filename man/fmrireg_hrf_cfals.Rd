@@ -2,7 +2,7 @@
 % Please edit documentation in R/cfals_wrapper.R
 \name{fmrireg_hrf_cfals}
 \alias{fmrireg_hrf_cfals}
-\title{Fit Rank-1 HRF Using CF-ALS}
+\title{(Deprecated) Fit Rank-1 HRF Using CF-ALS}
 \usage{
 fmrireg_hrf_cfals(
   fmri_data_obj,
@@ -78,9 +78,10 @@ An object of class `fmrireg_cfals_fit`. This object contains:
   }
 }
 \description{
-Convenience wrapper for the original CF-ALS implementation.  This
-function simply calls [fmrireg_cfals()] with `method = "cf_als"` and
-retains the historical argument names.
+\strong{Deprecated}. Use \code{\link{hrfals}} instead.
+Convenience wrapper for the original CF-ALS implementation. This
+function simply calls \code{hrfals()} and retains the historical
+argument names for backward compatibility.
 }
 \details{
 This function implements the Confound-Free Alternating Least Squares (CF-ALS)
@@ -120,8 +121,8 @@ emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
                              sampling_frame = sframe)
 Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 
-# Fit using fmrireg_hrf_cfals
-cfals_fit <- fmrireg_hrf_cfals(
+# Fit using hrfals
+cfals_fit <- hrfals(
   fmri_data_obj = Y_matrix,
   event_model = emod,
   hrf_basis = fmrireg::HRF_SPMG3, # Using SPMG3 basis (3 basis functions)
@@ -139,7 +140,7 @@ bspline_basis <- fmrireg::HRF_BSPLINE(knots = c(0, 4, 8, 12, 20))
 emod_bspline <- fmrireg::event_model(onset ~ hrf(cond, basis = bspline_basis),
                                      data = ev_df, block = ~ block,
                                      sampling_frame = sframe)
-cfals_fit_bspline <- fmrireg_hrf_cfals(
+cfals_fit_bspline <- hrfals(
   fmri_data_obj = Y_matrix,
   event_model = emod_bspline,
   hrf_basis = bspline_basis,
