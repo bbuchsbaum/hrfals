@@ -13,7 +13,8 @@ Imports:
     Matrix,
     broom,
     ggplot2,
-    Rcpp
+    Rcpp,
+    Rlinsolve
 LinkingTo:
     Rcpp,
     RcppArmadillo
