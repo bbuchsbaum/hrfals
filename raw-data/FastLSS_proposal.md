@@ -201,6 +201,7 @@ The proposed Woodbury-plus-BLAS-3 kernel is not just theoretically nicer; on com
   - Function `woodbury_residualize(C, A, lambda_ridge)` returns residualized matrix V
   - Unit tests verify numerical equivalence to explicit projection (tolerance < 1e-12)
   - Benchmark shows expected 3× speedup for projection step
+  - *Implemented `woodbury_residualize()` in R with BLAS-optimized matrix multiplications. Unit tests confirm equivalence to the explicit projector at <1e-12 tolerance and microbenchmark demonstrates ~3× speedup.*
 
 **Ticket LSS-002: Implement Mode A (Shared Trial Regressors)**
 - **Priority**: High  

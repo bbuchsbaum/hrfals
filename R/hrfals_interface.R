@@ -17,11 +17,11 @@ hrfals_control_defaults <- function() {
   )
 }
 
-#' Fit HRFs using CF-ALS
+#' Fit HRFs using CF-ALS (Design Interface)
 #'
-#' High level interface that dispatches to [fmrireg_cfals()].
-#' Control parameters are merged with [hrfals_control_defaults()] via
-#' [modifyList()].
+#' Internal helper that dispatches to [fmrireg_cfals()] when a pre-built
+#' design list is available. Control parameters are merged with
+#' [hrfals_control_defaults()] via [modifyList()].
 #'
 #' @param y Numeric matrix of BOLD data (time points \eqn{\times} voxels).
 #' @param design List produced by [create_cfals_design()] containing at least
@@ -30,26 +30,22 @@ hrfals_control_defaults <- function() {
 #' @param control List of control parameters overriding defaults.
 #' @param ... Additional arguments passed to [fmrireg_cfals()].
 #' @return An object of class `fmrireg_cfals_fit`.
-#' @export
-hrfals <- function(y, design, method = "cf_als", control = list(), ...) {
+#' @noRd
+hrfals_from_design <- function(y, design, method = "cf_als", control = list(), ...) {
   ctrl <- modifyList(hrfals_control_defaults(), control)
 
   if (is.null(design$event_model) || is.null(design$hrf_basis)) {
     stop("'design' must contain 'event_model' and 'hrf_basis' components")
   }
 
-  fmrireg_cfals(
+  hrfals(
     fmri_data_obj = y,
     event_model = design$event_model,
     hrf_basis = design$hrf_basis,
-    method = method,
-    lambda_init = ctrl$lambda_init,
-    lambda_b = ctrl$lambda_b,
-    lambda_h = ctrl$lambda_h,
-    lambda_joint = ctrl$lambda_joint,
+    lam_beta = ctrl$lambda_b,
+    lam_h = ctrl$lambda_h,
     R_mat = ctrl$R_mat,
     fullXtX = ctrl$fullXtX,
-    precompute_xty_flag = ctrl$precompute_xty_flag,
     max_alt = ctrl$max_alt,
     ...
   )
