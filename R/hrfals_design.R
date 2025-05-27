@@ -13,6 +13,8 @@
 #'   `fmrireg::fmri_dataset`.
 #' @param confound_obj Optional confound matrix with the same number of rows as
 #'   `fmri_data_obj`.
+#' @param baseline_model Optional baseline model whose design matrix is
+#'   projected alongside `confound_obj`.
 #' @param formula Model formula passed to [fmrireg::event_model()]. The default
 #'   expects a column named `condition` in `events`.
 #' @param block Formula specifying the block column. Defaults to `~ block` if a
@@ -23,6 +25,7 @@
 #' @export
 hrfals_design <- function(events, TR, basis, fmri_data_obj,
                           confound_obj = NULL,
+                          baseline_model = NULL,
                           formula = onset ~ hrf(condition),
                           block = if ("block" %in% names(events)) ~ block else NULL,
                           ...) {
@@ -43,5 +46,6 @@ hrfals_design <- function(events, TR, basis, fmri_data_obj,
   create_cfals_design(fmri_data_obj,
                       emod,
                       basis,
-                      confound_obj = confound_obj)
+                      confound_obj = confound_obj,
+                      baseline_model = baseline_model)
 }

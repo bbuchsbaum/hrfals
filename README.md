@@ -53,6 +53,18 @@ cfals_fit <- hrfals(
 print(cfals_fit)
 ```
 
+```r
+# Include a simple baseline model (runwise intercept + linear trend)
+base_mod <- fmrireg::baseline_model(sframe = sframe, degree = 1)
+cfals_baseline <- hrfals(
+  fmri_data_obj = Y_matrix,
+  event_model = emod,
+  hrf_basis = fmrireg::HRF_SPMG3,
+  baseline_model = base_mod,
+  max_alt = 1
+)
+```
+
 ## Main Functions
 
 - `hrfals()`: Main user-facing function for CF-ALS HRF estimation

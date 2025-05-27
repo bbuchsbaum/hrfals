@@ -39,6 +39,8 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
 #' @param event_model An `event_model` object from fmrireg.
 #' @param hrf_basis An HRF basis object with `nbasis > 1`.
 #' @param confound_obj Optional confound matrix.
+#' @param baseline_model Optional baseline model whose design matrix will
+#'   be projected along with `confound_obj`.
 #' @param hrf_shape_duration_sec Duration for the HRF reconstruction grid.
 #' @param hrf_shape_sample_res_sec Sampling resolution for the HRF grid.
 #' @return List with projected design matrices, reconstruction info and
@@ -51,6 +53,7 @@ create_cfals_design <- function(fmri_data_obj,
                                event_model,
                                hrf_basis,
                                confound_obj = NULL,
+                               baseline_model = NULL,
                                hrf_shape_duration_sec = attr(hrf_basis, "span"),
                                hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1]) {
   
@@ -65,13 +68,25 @@ create_cfals_design <- function(fmri_data_obj,
 
   n_timepoints <- nrow(Y_raw)
   v_voxels <- ncol(Y_raw)
-  
+
+  # optional baseline design matrix
+  baseline_mat <- NULL
+  if (!is.null(baseline_model)) {
+    baseline_mat <- fmrireg::design_matrix(baseline_model)
+    if (nrow(baseline_mat) != n_timepoints) {
+      stop("baseline_model design matrix has incorrect number of rows")
+    }
+  }
+
   # Handle missing data
   bad_row_idx <- which(apply(Y_raw, 1, function(r) any(is.na(r))))
   if (length(bad_row_idx) > 0) {
     Y_raw[bad_row_idx, ] <- 0
     if (!is.null(confound_obj)) {
       confound_obj[bad_row_idx, ] <- 0
+    }
+    if (!is.null(baseline_mat)) {
+      baseline_mat[bad_row_idx, ] <- 0
     }
   }
 
@@ -106,6 +121,15 @@ create_cfals_design <- function(fmri_data_obj,
   # Create canonical reference HRF using the same grid as the reconstruction matrix
   # This ensures consistency between h_ref_shape_canonical and Phi_recon_matrix
   h_ref_shape_canonical <- design_info$h_ref_shape_norm
+
+  # combine baseline model with confounds if supplied
+  if (!is.null(baseline_mat)) {
+    if (is.null(confound_obj)) {
+      confound_obj <- baseline_mat
+    } else {
+      confound_obj <- cbind(confound_obj, baseline_mat)
+    }
+  }
 
   # Project out confounds using the existing function
   proj <- project_confounds(Y_raw, X_list_raw, confound_obj)
