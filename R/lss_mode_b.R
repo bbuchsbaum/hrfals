@@ -14,10 +14,13 @@
 #' @param p_vec Numeric vector of length n as described in the proposal.
 #' @param lambda_ridge Optional ridge penalty when computing the
 #'   pseudoinverse of \code{A}.
+#' @param woodbury_thresh Threshold for switching from Woodbury to
+#'   QR-based residualisation. See \code{auto_residualize}.
 #' @return Numeric matrix of trial coefficients (T x v).
 #' @export
 lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
-                       lambda_ridge = 0) {
+                       lambda_ridge = 0,
+                       woodbury_thresh = 50) {
   stopifnot(is.matrix(Y), is.matrix(A), is.list(X_onset_list),
             is.matrix(H_allvoxels))
   n <- nrow(Y)
@@ -34,10 +37,6 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
       stop("All onset matrices must have n rows")
   }
   m <- ncol(A)
-  AtA <- crossprod(A)
-  if (lambda_ridge != 0)
-    AtA <- AtA + lambda_ridge * diag(m)
-  P <- cholSolve(AtA, t(A))
 
   trial_names <- names(X_onset_list)
   if (is.null(trial_names))
@@ -50,8 +49,8 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
     for (t in seq_len(Tt)) {
       C_v[, t] <- X_onset_list[[t]] %*% h_v
     }
-    U_v <- P %*% C_v
-    V_v <- C_v - A %*% U_v
+    V_v <- auto_residualize(C_v, A, lambda_ridge,
+                            woodbury_thresh = woodbury_thresh)
     pc_row <- drop(crossprod(p_vec, C_v))
     cv_row <- colSums(V_v * V_v)
     alpha_row <- numeric(Tt)

@@ -54,3 +54,12 @@ test_that("lss_mode_b handles collinear trial", {
   expect_equal(res_fast, res_naive, tolerance = 1e-12)
   expect_true(all(is.finite(res_fast)))
 })
+
+test_that("lss_mode_b fallback to QR matches naive", {
+  dat <- simple_lss_b_data()
+  res_fast <- lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p,
+                         lambda_ridge = 0.1, woodbury_thresh = 1)
+  res_naive <- naive_lss_mode_b(dat$Y, dat$A, dat$X, dat$H, dat$p,
+                                lambda_ridge = 0.1)
+  expect_equal(res_fast, res_naive, tolerance = 1e-12)
+})
