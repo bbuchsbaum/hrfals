@@ -43,9 +43,10 @@
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
 #' @param max_alt Number of alternating updates for `cf_als`.
 #' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
-#'   Currently unused.
-#' @param design_control List of design matrix processing options. Currently
-#'   unused.
+#'   (Not yet used.)
+#' @param design_control List of design matrix processing options. Set
+#'   `standardize_predictors = TRUE` to z-score continuous predictors
+#'   before estimation.
 #' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
 #' @param hrf_shape_resolution Sampling resolution of the HRF grid.
 #' @return An `hrfals_fit` object.
@@ -144,6 +145,10 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   )
 
   rownames(fit$beta) <- prep$condition_names
+
+  if (isTRUE(design_control$standardize_predictors)) {
+    fit$beta <- sweep(fit$beta, 1, prep$predictor_sds, FUN = "/")
+  }
   recon_hrf <- Phi %*% fit$h
 
   pred_p <- matrix(0, n, v)
@@ -169,7 +174,9 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              fmrireg_hrf_basis_used = hrf_basis_for_cfals,
              target_event_term_name = target_event_term_name,
              phi_recon_matrix = Phi,
-             design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX),
+             design_info = list(d = d, k = k, n = n, v = v, fullXtX = fullXtX,
+                               predictor_means = prep$predictor_means,
+                               predictor_sds = prep$predictor_sds),
              residuals = resids,
              bad_row_idx = prep$bad_row_idx,
              recon_hrf = recon_hrf,
