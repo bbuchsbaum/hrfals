@@ -143,6 +143,16 @@ create_cfals_design <- function(fmri_data_obj,
   Y_proj <- proj$Y
   X_list_proj <- proj$X_list
 
+  # Determine whether to cache the projected design blocks
+  size_est <- as.numeric(k_conditions) * n_timepoints * d_basis_dim * 8
+  cache_requested <- isTRUE(design_control$cache_design_blocks)
+  mem_threshold <- 32 * 1024^3  # ~32GB
+  cache_design_blocks_used <- cache_requested && size_est <= mem_threshold
+  if (cache_requested && !cache_design_blocks_used) {
+    message("Estimated memory for lagged design blocks (", size_est,
+            " bytes) exceeds threshold; disabling cache_design_blocks")
+  }
+
   predictor_means <- rep(0, length(X_list_proj))
   predictor_sds <- rep(1, length(X_list_proj))
   if (isTRUE(design_control$standardize_predictors)) {
@@ -177,7 +187,8 @@ create_cfals_design <- function(fmri_data_obj,
     k = k_conditions,
     Phi = Phi_recon_matrix,
     predictor_means = predictor_means,
-    predictor_sds = predictor_sds
+    predictor_sds = predictor_sds,
+    cache_design_blocks = cache_design_blocks_used
   )
 }
 
