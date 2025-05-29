@@ -6,10 +6,12 @@ make_hrfals_fit <- function() {
   h <- matrix(rnorm(4), 2, 2)
   beta <- matrix(rnorm(2), 1, 2)
   phi <- diag(2)
-  dinfo <- list(d = 2, k = 1, n = 2, v = 2)
+  dinfo <- list(d = 2, k = 1, n = 2, v = 2,
+                predictor_means = 0, predictor_sds = 1)
   hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
              call("hrfals_fit"), fmrireg::HRF_SPMG1, "term",
-             phi, dinfo, matrix(0, 1, 1))
+             phi, dinfo, matrix(0, 1, 1),
+             beta_penalty = list(l1 = 0.1, alpha = 1, warm_start = TRUE))
 }
 
 

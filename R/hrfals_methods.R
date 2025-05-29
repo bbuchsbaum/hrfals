@@ -21,11 +21,14 @@ hrfals_fit <- function(h_coeffs, beta_amps, method, lambdas, call,
                        fmrireg_hrf_basis_used, target_event_term_name,
                        phi_recon_matrix, design_info, residuals,
                        bad_row_idx = integer(0),
-                       recon_hrf = NULL, gof = NULL) {
+                       recon_hrf = NULL, gof = NULL,
+                       beta_penalty = NULL) {
+  lambda_list <- as.list(lambdas)
+  lambda_list$beta_penalty <- beta_penalty
   out <- list(h_coeffs = h_coeffs,
               beta_amps = beta_amps,
               method_used = method,
-              lambdas = lambdas,
+              lambdas = lambda_list,
               call = call,
               fmrireg_hrf_basis_used = fmrireg_hrf_basis_used,
               target_event_term_name = target_event_term_name,

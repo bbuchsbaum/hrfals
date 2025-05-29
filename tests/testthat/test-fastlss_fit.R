@@ -4,10 +4,12 @@ make_cfals_fit <- function() {
   h <- matrix(rnorm(2), 1, 2)
   beta <- matrix(rnorm(2), 1, 2)
   phi <- matrix(1, 1, 1)
-  dinfo <- list(d = 1, k = 1, n = 1, v = 2)
+  dinfo <- list(d = 1, k = 1, n = 1, v = 2,
+                predictor_means = 0, predictor_sds = 1)
   hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
              call("hrfals_fit"), fmrireg::HRF_SPMG1, "term", phi, dinfo,
-             matrix(0, 1, 1))
+             matrix(0, 1, 1),
+             beta_penalty = list(l1 = 0.1, alpha = 1, warm_start = TRUE))
 }
 
 test_that("fastlss_fit constructor works", {
