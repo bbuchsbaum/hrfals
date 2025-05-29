@@ -27,6 +27,7 @@ test_that("h-update solves block system", {
   b_current <- init$beta
 
   XtX_list <- lapply(dat$X_list, crossprod)
+  XtX_diag <- t(vapply(dat$X_list, function(X) colSums(X^2), numeric(d)))
   XtY_list <- lapply(dat$X_list, function(X) crossprod(X, dat$Y))
   k <- length(dat$X_list)
   d <- ncol(dat$X_list[[1]])
@@ -47,7 +48,7 @@ test_that("h-update solves block system", {
   }
 
   lhs_block_list <- hrfals:::make_lhs_block_list(
-    XtX_list, NULL, b_current,
+    XtX_list, NULL, XtX_diag, b_current,
     lambda_h, lambda_joint, Rm,
     FALSE, d, v, k
   )
