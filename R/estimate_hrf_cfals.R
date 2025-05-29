@@ -13,9 +13,9 @@
 #'   projected along with `confound_obj`.
 #' @param method Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").
 #' @param lambda_init Ridge penalty for initial LS solve.
-#' @param lambda_b Ridge penalty for the beta update. Ignored when
-#'   `beta_penalty$l1 > 0` as the Elastic Net solver controls all
-#'   regularisation.
+#' @param lambda_b Ridge penalty for the beta update. When
+#'   `beta_penalty$l1 > 0` this value adds to the Elastic Net L2
+#'   component, otherwise it is the sole L2 penalty as in classic CF-ALS.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param lambda_joint Joint penalty for the h update.
 #' @param lambda_s Spatial regularization strength controlling the amount of
@@ -45,11 +45,17 @@
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
 #' @param max_alt Number of alternating updates for `cf_als`.
 #' @param beta_penalty List with elements `l1`, `alpha`, and `warm_start`
-#'   passed to `cf_als_engine` for sparse beta estimation. Set `l1 > 0`
-#'   to enable an Elastic Net update.
+#'   controlling sparse beta estimation. Set `l1 > 0` to engage the
+#'   Elastic Net solver with mixing parameter `alpha` in \[0,1\]. Typical
+#'   `l1` values between 0.01 and 0.1 work well for standardised inputs.
+#'   When `warm_start = TRUE` the previous iteration's betas are used as the
+#'   starting point which improves convergence.
 #' @param design_control List of design matrix processing options. Set
 #'   `standardize_predictors = TRUE` to z-score continuous predictors
-#'   before estimation.
+#'   before estimation. Resulting betas are rescaled back to the original
+#'   predictor units. If `cache_design_blocks = TRUE` the time-lagged
+#'   predictor matrices are stored in memory when feasible to accelerate
+#'   repeated HRF updates.
 #' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
 #' @param hrf_shape_resolution Sampling resolution of the HRF grid.
 #' @return An `hrfals_fit` object.

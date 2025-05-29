@@ -9,8 +9,11 @@ create_cfals_design(
   event_model,
   hrf_basis,
   confound_obj = NULL,
+  baseline_model = NULL,
   hrf_shape_duration_sec = attr(hrf_basis, "span"),
-  hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1]
+  hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1],
+  design_control = list(standardize_predictors = TRUE,
+    cache_design_blocks = TRUE)
 )
 }
 \arguments{
@@ -22,16 +25,28 @@ create_cfals_design(
 
 \item{confound_obj}{Optional confound matrix.}
 
+\item{baseline_model}{Optional baseline model whose design matrix is
+projected along with \code{confound_obj}.}
+
 \item{hrf_shape_duration_sec}{Duration for the HRF reconstruction grid.}
 
 \item{hrf_shape_sample_res_sec}{Sampling resolution for the HRF grid.}
+
+\item{design_control}{List with options controlling preprocessing of the
+design matrices. When \code{standardize_predictors = TRUE} each
+predictor block is z-scored before estimation and the returned betas are
+rescaled to the original units. If \code{cache_design_blocks = TRUE}
+the lagged predictor matrices are cached in memory when the estimated
+footprint is below \~32GB.}
 }
 \value{
 List with projected design matrices, reconstruction info and
   metadata for CFALS engines. Rows of `fmri_data_obj` containing `NA`
   in any voxel are zeroed out along with the corresponding rows in the
   design matrices and `confound_obj` (if provided). The indices of these
-  rows are returned as `bad_row_idx`.
+  rows are returned as `bad_row_idx`. When predictor standardisation is
+  used the vectors `predictor_means` and `predictor_sds` store the scaling
+  applied to each design block.
 }
 \description{
 This function leverages fmrireg's built-in design matrix creation and

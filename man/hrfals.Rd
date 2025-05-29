@@ -30,6 +30,10 @@ hrfals(
   event_model,
   hrf_basis,
   confound_obj = NULL,
+  baseline_model = NULL,
+  beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
+  design_control = list(standardize_predictors = TRUE,
+    cache_design_blocks = TRUE),
   lam_beta = 10,
   lam_h = 1,
   R_mat = NULL,
@@ -56,9 +60,12 @@ points x number of confounds). These nuisance variables are projected
 out from the BOLD data and design matrices prior to CF-ALS estimation.
 Defaults to `NULL` (no confounds).}
 
-\item{lam_beta}{Numeric. The regularization parameter for the beta (amplitude)
-update step. Controls the L2 penalty on the amplitude coefficients.
-Defaults to 10.}
+\item{baseline_model}{Optional baseline model whose design matrix is
+projected alongside \code{confound_obj}.}
+
+\item{lam_beta}{Numeric. L2 penalty strength for the beta update. When
+\code{beta_penalty$l1 > 0} this value is added to the Elastic Net L2
+component; otherwise it is the sole ridge penalty. Defaults to 10.}
 
 \item{lam_h}{Numeric. The regularization parameter for the h (HRF coefficient)
 update step. Controls the L2 penalty on the HRF basis coefficients.
@@ -98,6 +105,18 @@ and h updates. The proposal notes that empirically one alternation
 (`max_alt = 1`) after SVD initialization is often sufficient.
 Defaults to 1.}
 
+\item{beta_penalty}{List with elements \code{l1}, \code{alpha}, and
+\code{warm_start}. Setting \code{l1 > 0} enables an Elastic Net beta
+update with mixing parameter \code{alpha}. Typical \code{l1} values of
+0.01--0.1 work well when predictors are standardised. Warm-starting
+reuses betas from the previous iteration.}
+
+\item{design_control}{List controlling predictor preprocessing. When
+\code{standardize_predictors = TRUE} predictors are z-scored and the
+returned betas are rescaled to the original units. If
+\code{cache_design_blocks = TRUE} lagged design matrices are cached in
+memory when possible.}
+
 \item{...}{Additional arguments passed to the underlying estimation engine.}
 }
 \value{
@@ -109,7 +128,7 @@ An object of class `fmrireg_cfals_fit`. This object contains:
     \item `residuals`: An n x v matrix of model residuals after fitting (n = number of timepoints).
     \item `hrf_basis_used`: The `hrf_basis` object that was supplied to the function.
     \item `lambdas_used`: A named list or vector containing the regularization parameters (`lam_beta`, `lam_h`) used in the estimation.
-    \item `design_info`: A list containing dimensions and flags used during estimation (e.g., d, k, n, v, `fullXtX`).
+    \item `design_info`: A list containing dimensions and flags used during estimation (e.g., d, k, n, v, `fullXtX`) and, when predictor standardisation is used, the vectors `predictor_means` and `predictor_sds`.
     \item `gof_per_voxel`: Optional. Goodness-of-fit statistics per voxel, such as R-squared.
     \item (Other elements as defined by the `fmrireg_cfals_fit` class structure from the proposal, like `call`).
   }

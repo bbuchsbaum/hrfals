@@ -11,7 +11,9 @@
 #' @param fmrireg_hrf_basis_used HRF basis object supplied to the wrapper.
 #' @param target_event_term_name Name of the event term the HRF was estimated for.
 #' @param phi_recon_matrix The matrix used to reconstruct HRF shape from coefficients.
-#' @param design_info List with design metadata (d, k, n, v, fullXtX).
+#' @param design_info List with design metadata (d, k, n, v, fullXtX) and,
+#'   when predictor standardisation is used, the vectors
+#'   `predictor_means` and `predictor_sds` for rescaling betas.
 #' @param residuals Residual matrix from the projected data fit.
 #' @param bad_row_idx Integer vector of time points that were zeroed due to NA
 #'   values.

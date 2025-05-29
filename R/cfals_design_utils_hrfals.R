@@ -46,6 +46,9 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
 #' @param design_control List with options controlling preprocessing of
 #'   the design matrices. The `standardize_predictors` element indicates
 #'   whether each predictor should be z-scored prior to estimation.
+#'   When `cache_design_blocks = TRUE` the lagged predictor matrices are
+#'   cached in memory if the estimated footprint is below ~32GB; otherwise
+#'   they are generated on the fly with a message to the user.
 #' @return List with projected design matrices, reconstruction info and
 #'   metadata for CFALS engines. Rows of `fmri_data_obj` containing `NA`
 #'   in any voxel are zeroed out along with the corresponding rows in the

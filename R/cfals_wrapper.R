@@ -19,9 +19,10 @@
 #'   "ls_svd_1als" (default) or "cf_als".
 #' @param lambda_init Ridge penalty for the initial GLM solve used by
 #'   `ls_svd` based methods.
-#' @param lambda_b Ridge penalty for the beta update step. This value
-#'   is ignored when `beta_penalty$l1 > 0` because the Elastic Net
-#'   solver handles all regularisation.
+#' @param lambda_b Ridge penalty for the beta update step. When
+#'   `beta_penalty$l1 > 0` this value is added to the Elastic Net L2
+#'   penalty; otherwise it is the sole L2 regularisation on the beta
+#'   coefficients.
 #' @param lambda_h Ridge penalty for the h update step.
 #' @param lambda_joint Joint ridge penalty applied to both beta and h updates.
 #'   This helps prevent see-saw effects between the two parameter blocks.
@@ -319,9 +320,15 @@ fmrireg_cfals <- function(fmri_data_obj,
 #'   `confound_obj`.
 #' @param beta_penalty List with elements `l1`, `alpha`, and `warm_start`
 #'   forwarded to `estimate_hrf_cfals` for sparse beta estimation.
+#'   Setting `l1 > 0` triggers an Elastic Net beta update with mixing
+#'   parameter `alpha`. Typical `l1` values are between 0.01 and 0.1 for
+#'   scaled predictors. Warm-starting reuses betas from the previous
+#'   iteration to speed convergence.
 #' @param design_control List of design matrix processing options. Set
 #'   `standardize_predictors = TRUE` to z-score continuous predictors
-#'   before estimation.
+#'   before estimation. Betas are returned in the original units. When
+#'   `cache_design_blocks = TRUE` lagged design matrices are cached in
+#'   memory when feasible to avoid recomputation.
 #' @return An object of class \code{hrfals_fit}.
 #' @export
 hrfals <- function(fmri_data_obj,
