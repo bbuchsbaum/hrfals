@@ -42,6 +42,10 @@
 #'   coefficient vector is still estimated per voxel.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
 #' @param max_alt Number of alternating updates for `cf_als`.
+#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
+#'   Currently unused.
+#' @param design_control List of design matrix processing options. Currently
+#'   unused.
 #' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
 #' @param hrf_shape_resolution Sampling resolution of the HRF grid.
 #' @return An `hrfals_fit` object.
@@ -66,6 +70,9 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                fullXtX = FALSE,
                                precompute_xty_flag = TRUE,
                                max_alt = 10,
+                               beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
+                               design_control = list(standardize_predictors = TRUE,
+                                                     cache_design_blocks = TRUE),
                                hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
                                hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
                                ...) {
@@ -77,7 +84,8 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                              confound_obj = confound_obj,
                              baseline_model = baseline_model,
                              hrf_shape_duration_sec = hrf_shape_duration,
-                             hrf_shape_sample_res_sec = hrf_shape_resolution)
+                             hrf_shape_sample_res_sec = hrf_shape_resolution,
+                             design_control = design_control)
 
   Xp <- prep$X_list_proj
   Yp <- prep$Y_proj
@@ -130,7 +138,9 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                            precompute_xty_flag = precompute_xty_flag,
                            Phi_recon_matrix = Phi,
                            h_ref_shape_canonical = h_ref_shape_canonical,
-                           max_alt = max_alt)
+                           max_alt = max_alt,
+                           beta_penalty = beta_penalty,
+                           design_control = design_control)
   )
 
   rownames(fit$beta) <- prep$condition_names

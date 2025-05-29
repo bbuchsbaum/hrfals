@@ -70,6 +70,10 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, b_current,
 #' @param max_alt number of alternating updates after initialization
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
+#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
+#'   Currently unused.
+#' @param design_control List of design matrix processing options. Currently
+#'   unused.
 #' @return list with matrices `h` (d x v) and `beta` (k x v). The
 #'   matrix `h` has an attribute `"iterations"` recording the number
 #'   of alternating updates performed.
@@ -93,7 +97,10 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                           h_ref_shape_canonical,
                           max_alt = 1,
                           epsilon_svd = 1e-8,
-                          epsilon_scale = 1e-8) {
+                          epsilon_scale = 1e-8,
+                          beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
+                          design_control = list(standardize_predictors = TRUE,
+                                                cache_design_blocks = TRUE)) {
 
   # Validate inputs and extract dimensions
   dims <- validate_hrf_engine_inputs(X_list_proj, Y_proj, Phi_recon_matrix, h_ref_shape_canonical)
