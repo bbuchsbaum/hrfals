@@ -378,3 +378,23 @@ fmrireg_hrf_cfals <- function(...) {
   .Deprecated("hrfals")
   hrfals(...)
 }
+
+#' Convenient wrapper enabling sparse beta estimation
+#'
+#' `hrfals_sparse()` simply calls [hrfals()] with sparse beta defaults
+#' (`beta_penalty$l1 > 0`) and standard design control. It provides a
+#' shorthand for common sparse modeling use cases.
+#'
+#' @inheritParams hrfals
+#' @param ... Arguments passed on to [hrfals()].
+#' @export
+hrfals_sparse <- function(...,
+                          beta_penalty = list(l1 = 0.05,
+                                               alpha = 1,
+                                               warm_start = TRUE),
+                          design_control = list(standardize_predictors = TRUE,
+                                                cache_design_blocks = TRUE)) {
+  hrfals(...,
+         beta_penalty = beta_penalty,
+         design_control = design_control)
+}
