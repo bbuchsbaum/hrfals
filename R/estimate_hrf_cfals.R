@@ -13,7 +13,9 @@
 #'   projected along with `confound_obj`.
 #' @param method Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").
 #' @param lambda_init Ridge penalty for initial LS solve.
-#' @param lambda_b Ridge penalty for the beta update.
+#' @param lambda_b Ridge penalty for the beta update. Ignored when
+#'   `beta_penalty$l1 > 0` as the Elastic Net solver controls all
+#'   regularisation.
 #' @param lambda_h Ridge penalty for the h update.
 #' @param lambda_joint Joint penalty for the h update.
 #' @param lambda_s Spatial regularization strength controlling the amount of

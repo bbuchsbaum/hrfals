@@ -114,6 +114,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     stop("lambda_b, lambda_h, lambda_init, and lambda_joint must be non-negative")
   }
 
+  # Effective beta penalty: when a sparse penalty is used via `beta_penalty$l1`
+  # the `lam_beta` ridge component is ignored as described in ticket
+  # SP-CFALS-006.
+  lambda_b_eff <- if (beta_penalty$l1 > 0) 0 else lambda_b
+
   h_solver <- match.arg(h_solver)
   if (lambda_s < 0) {
     stop("lambda_s must be non-negative")
@@ -221,7 +226,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
             }
           }
           G_vx <- G_vx + lambda_joint * diag(k)
-          warm_beta[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
+          warm_beta[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k), DhTy_vx,
                                        eps = max(epsilon_svd, epsilon_scale))
         }
         b_current <- warm_beta
@@ -266,7 +271,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           }
         }
         G_vx <- G_vx + lambda_joint * diag(k)
-        b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
+        b_current[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k), DhTy_vx,
                                      eps = max(epsilon_svd, epsilon_scale))
       }
     }
@@ -376,7 +381,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
     res_iter <- Y_proj - pred_iter
     SSE_iter <- sum(res_iter^2)
-    beta_pen <- lambda_b * sum(b_current^2)
+    beta_pen <- lambda_b_eff * sum(b_current^2)
     R_eff <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
     h_pen <- lambda_h * sum(colSums(h_current * (R_eff %*% h_current)))
     # Include joint ridge penalty in objective
