@@ -312,8 +312,8 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' @inheritParams fmrireg_hrf_cfals
 #' @param baseline_model Optional baseline model to project out alongside
 #'   `confound_obj`.
-#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
-#'   (Not yet used.)
+#' @param beta_penalty List with elements `l1`, `alpha`, and `warm_start`
+#'   forwarded to `estimate_hrf_cfals` for sparse beta estimation.
 #' @param design_control List of design matrix processing options. Set
 #'   `standardize_predictors = TRUE` to z-score continuous predictors
 #'   before estimation.
