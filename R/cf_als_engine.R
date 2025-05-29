@@ -301,6 +301,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
           }
           rhs <- rhs + b_vx[l] * XtY_l_vx
         }
+        # Block solve for entire h vector for this voxel
         h_current[, vx] <- cholSolve(lhs, rhs,
                                      eps = max(epsilon_svd, epsilon_scale))
         s <- max(abs(h_current[, vx]), epsilon_scale)
