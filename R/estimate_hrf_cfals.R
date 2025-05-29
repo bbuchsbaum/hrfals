@@ -183,7 +183,8 @@ estimate_hrf_cfals <- function(fmri_data_obj,
              residuals = resids,
              bad_row_idx = prep$bad_row_idx,
              recon_hrf = recon_hrf,
-            gof = r2)
+            gof = r2,
+            beta_penalty = beta_penalty)
 }
 
 #' Spatially-Regularised CF-ALS Convenience Wrapper

@@ -175,10 +175,13 @@ fmrireg_cfals <- function(fmri_data_obj,
                                               k = design$k,
                                               n = n,
                                               v = v,
-                                              fullXtX = fullXtX),
+                                              fullXtX = fullXtX,
+                                              predictor_means = design$predictor_means,
+                                              predictor_sds = design$predictor_sds),
                            residuals = resids,
                            recon_hrf = recon_hrf,
-                           gof = r2)
+                           gof = r2,
+                           beta_penalty = NULL)
   out
 }
 
