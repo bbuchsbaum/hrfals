@@ -14,7 +14,8 @@ Imports:
     broom,
     ggplot2,
     Rcpp,
-    Rlinsolve
+    Rlinsolve,
+    glmnet
 LinkingTo:
     Rcpp,
     RcppArmadillo
