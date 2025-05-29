@@ -19,7 +19,9 @@
 #'   "ls_svd_1als" (default) or "cf_als".
 #' @param lambda_init Ridge penalty for the initial GLM solve used by
 #'   `ls_svd` based methods.
-#' @param lambda_b Ridge penalty for the beta update step.
+#' @param lambda_b Ridge penalty for the beta update step. This value
+#'   is ignored when `beta_penalty$l1 > 0` because the Elastic Net
+#'   solver handles all regularisation.
 #' @param lambda_h Ridge penalty for the h update step.
 #' @param lambda_joint Joint ridge penalty applied to both beta and h updates.
 #'   This helps prevent see-saw effects between the two parameter blocks.
