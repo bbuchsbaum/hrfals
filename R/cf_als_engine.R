@@ -6,6 +6,9 @@
 #' @param XtX_list list of `k` cross-product matrices `X_l^T X_l`.
 #' @param XtX_full_list optional `k x k` list matrix of full cross-products
 #'   `X_l^T X_m` when `fullXtX_flag` is `TRUE`.
+#' @param XtX_diag optional `k x d` matrix with column-wise sum-of-squares for
+#'   each design block. Used when `fullXtX_flag = FALSE` to form diagonal
+#'   Hessian entries efficiently.
 #' @param b_current current beta estimates (k x v).
 #' @param lambda_h ridge penalty for the h-update.
 #' @param lambda_joint joint ridge penalty applied to both beta and h.
@@ -17,9 +20,9 @@
 #' @return list of length `v` with `d x d` matrices.
 #' @keywords internal
 #' @noRd
-make_lhs_block_list <- function(XtX_list, XtX_full_list, b_current,
-                                lambda_h, lambda_joint, R_mat_eff,
-                                fullXtX_flag, d, v, k) {
+make_lhs_block_list <- function(XtX_list, XtX_full_list, XtX_diag,
+                                b_current, lambda_h, lambda_joint,
+                                R_mat_eff, fullXtX_flag, d, v, k) {
   penalty_mat <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
   base_lhs <- lambda_h * penalty_mat + lambda_joint * diag(d)
   lhs_list <- vector("list", v)
@@ -33,8 +36,13 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, b_current,
         }
       }
     } else {
-      for (l in seq_len(k)) {
-        lhs_vx <- lhs_vx + b_vx[l]^2 * XtX_list[[l]]
+      if (!is.null(XtX_diag)) {
+        diag(lhs_vx) <- diag(lhs_vx) +
+          as.numeric(crossprod(b_vx^2, XtX_diag))
+      } else {
+        for (l in seq_len(k)) {
+          lhs_vx <- lhs_vx + b_vx[l]^2 * XtX_list[[l]]
+        }
       }
     }
     lhs_list[[vx]] <- lhs_vx
@@ -164,6 +172,11 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   b_current <- init$beta
 
   XtX_list <- lapply(X_list_proj, crossprod)
+  if (!fullXtX_flag) {
+    XtX_diag <- t(vapply(X_list_proj, function(X) colSums(X^2), numeric(d)))
+  } else {
+    XtX_diag <- NULL
+  }
 
 
   size_est <- as.numeric(k) * d * v * 8
@@ -277,8 +290,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
 
     lhs_block_list <- make_lhs_block_list(
-      XtX_list, XtX_full_list, b_current,
-      lambda_h, lambda_joint, R_mat_eff,
+      XtX_list, XtX_full_list, XtX_diag,
+      b_current, lambda_h, lambda_joint, R_mat_eff,
       fullXtX_flag, d, v, k
     )
 
