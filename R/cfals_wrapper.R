@@ -312,6 +312,10 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' @inheritParams fmrireg_hrf_cfals
 #' @param baseline_model Optional baseline model to project out alongside
 #'   `confound_obj`.
+#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
+#'   Currently unused.
+#' @param design_control List of design matrix processing options. Currently
+#'   unused.
 #' @return An object of class \code{hrfals_fit}.
 #' @export
 hrfals <- function(fmri_data_obj,
@@ -319,6 +323,9 @@ hrfals <- function(fmri_data_obj,
                    hrf_basis,
                    confound_obj = NULL,
                    baseline_model = NULL,
+                   beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
+                   design_control = list(standardize_predictors = TRUE,
+                                         cache_design_blocks = TRUE),
                    lam_beta = 10,
                    lam_h = 1,
                    lambda_s = 0,
@@ -349,6 +356,8 @@ hrfals <- function(fmri_data_obj,
                      R_mat = R_mat_param,
                      fullXtX = fullXtX,
                      max_alt = max_alt,
+                     beta_penalty = beta_penalty,
+                     design_control = design_control,
                      ...)
 }
 
