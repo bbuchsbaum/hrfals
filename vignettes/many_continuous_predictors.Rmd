@@ -1,0 +1,72 @@
+---
+title: "Estimating Shared HRFs with Many Continuous Predictors"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Many Continuous Predictors}
+  %\VignetteEngine{rmarkdown::html_vignette}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This vignette demonstrates the sparse CF-ALS implementation for scenarios
+with a large number of continuous predictors.  The helper function
+`hrfals_sparse()` provides sensible defaults for these use cases.
+
+## Simulated example
+
+The code below simulates a small data set with many predictors and then
+fits the model using `hrfals_sparse()`.  The same workflow applies when
+using real fMRI data and a design created with `fmrireg::event_model()`.
+
+```{r eval=FALSE}
+library(hrfals)
+library(fmrireg)
+
+n  <- 60   # time points
+k  <- 100  # number of continuous predictors
+h_len <- 5 # length of FIR basis
+
+# simulate predictors
+X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * h_len), n, h_len))
+
+# sparse beta pattern
+beta_true <- c(rep(1, 5), rep(0, k - 5))
+
+# true HRF coefficients
+h_true <- rnorm(h_len)
+
+# generate BOLD signal
+Y <- matrix(0, n, 1)
+for (i in seq_len(k)) {
+  Y <- Y + (X_list[[i]] %*% h_true) * beta_true[i]
+}
+Y <- Y + matrix(rnorm(n, sd = 0.1), n, 1)
+
+# fit using sparse CF-ALS
+fit <- cf_als_engine(
+  X_list, Y,
+  lambda_b = 0.1,
+  lambda_h = 0.1,
+  lambda_init = 0.1,
+  R_mat_eff = diag(h_len),
+  fullXtX_flag = FALSE,
+  precompute_xty_flag = TRUE,
+  Phi_recon_matrix = diag(h_len),
+  h_ref_shape_canonical = rep(1, h_len),
+  max_alt = 2,
+  beta_penalty = list(l1 = 0.05, alpha = 1, warm_start = TRUE),
+  design_control = list(standardize_predictors = TRUE,
+                        cache_design_blocks = TRUE)
+)
+
+plot(fit)
+```
+
+The estimated HRF and sparse beta weights can be inspected from the
+returned `fit` object.  When working with real fMRI data you would
+construct `X_list` via `create_cfals_design()` which supports
+splitting a single `Ident` term into multiple predictor blocks.
+
