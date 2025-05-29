@@ -313,9 +313,10 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' @param baseline_model Optional baseline model to project out alongside
 #'   `confound_obj`.
 #' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
-#'   Currently unused.
-#' @param design_control List of design matrix processing options. Currently
-#'   unused.
+#'   (Not yet used.)
+#' @param design_control List of design matrix processing options. Set
+#'   `standardize_predictors = TRUE` to z-score continuous predictors
+#'   before estimation.
 #' @return An object of class \code{hrfals_fit}.
 #' @export
 hrfals <- function(fmri_data_obj,

@@ -43,11 +43,16 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
 #'   be projected along with `confound_obj`.
 #' @param hrf_shape_duration_sec Duration for the HRF reconstruction grid.
 #' @param hrf_shape_sample_res_sec Sampling resolution for the HRF grid.
+#' @param design_control List with options controlling preprocessing of
+#'   the design matrices. The `standardize_predictors` element indicates
+#'   whether each predictor should be z-scored prior to estimation.
 #' @return List with projected design matrices, reconstruction info and
 #'   metadata for CFALS engines. Rows of `fmri_data_obj` containing `NA`
 #'   in any voxel are zeroed out along with the corresponding rows in the
 #'   design matrices and `confound_obj` (if provided). The indices of these
-#'   rows are returned as `bad_row_idx`.
+#'   rows are returned as `bad_row_idx`. When predictor standardization is
+#'   enabled the vectors `predictor_means` and `predictor_sds` contain the
+#'   scaling factors applied to each design block.
 #' @export
 create_cfals_design <- function(fmri_data_obj,
                                event_model,
@@ -55,7 +60,9 @@ create_cfals_design <- function(fmri_data_obj,
                                confound_obj = NULL,
                                baseline_model = NULL,
                                hrf_shape_duration_sec = attr(hrf_basis, "span"),
-                               hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1]) {
+                               hrf_shape_sample_res_sec = event_model$sampling_frame$TR[1],
+                               design_control = list(standardize_predictors = TRUE,
+                                                     cache_design_blocks = TRUE)) {
   
   # Extract BOLD data matrix
   if (inherits(fmri_data_obj, "fmri_dataset")) {
@@ -136,6 +143,19 @@ create_cfals_design <- function(fmri_data_obj,
   Y_proj <- proj$Y
   X_list_proj <- proj$X_list
 
+  predictor_means <- rep(0, length(X_list_proj))
+  predictor_sds <- rep(1, length(X_list_proj))
+  if (isTRUE(design_control$standardize_predictors)) {
+    for (i in seq_along(X_list_proj)) {
+      mu_i <- mean(X_list_proj[[i]], na.rm = TRUE)
+      sd_i <- stats::sd(as.vector(X_list_proj[[i]]), na.rm = TRUE)
+      if (is.na(sd_i) || sd_i < .Machine$double.eps) sd_i <- 1
+      X_list_proj[[i]] <- (X_list_proj[[i]] - mu_i) / sd_i
+      predictor_means[i] <- mu_i
+      predictor_sds[i] <- sd_i
+    }
+  }
+
   # Return comprehensive design information
   list(
     Y_proj = Y_proj,
@@ -155,7 +175,9 @@ create_cfals_design <- function(fmri_data_obj,
     X_list = X_list_raw,
     d = d_basis_dim,
     k = k_conditions,
-    Phi = Phi_recon_matrix
+    Phi = Phi_recon_matrix,
+    predictor_means = predictor_means,
+    predictor_sds = predictor_sds
   )
 }
 
