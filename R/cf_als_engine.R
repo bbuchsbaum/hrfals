@@ -70,10 +70,12 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, b_current,
 #' @param max_alt number of alternating updates after initialization
 #' @param epsilon_svd tolerance for singular value screening
 #' @param epsilon_scale tolerance for scale in identifiability step
-#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
-#'   Currently unused.
-#' @param design_control List of design matrix processing options. Currently
-#'   unused.
+#' @param beta_penalty List with elements `l1`, `alpha`, and `warm_start`
+#'   controlling sparse (Elastic Net) penalties for the beta-step.
+#'   Set `l1 > 0` to enable sparse estimation.
+#' @param design_control List of design matrix processing options. Set
+#'   `standardize_predictors = TRUE` to z-score predictors before estimation
+#'   and `cache_design_blocks = TRUE` to pre-compute lagged design blocks.
 #' @return list with matrices `h` (d x v) and `beta` (k x v). The
 #'   matrix `h` has an attribute `"iterations"` recording the number
 #'   of alternating updates performed.
@@ -184,41 +186,89 @@ cf_als_engine <- function(X_list_proj, Y_proj,
 
   iter_final <- 0
   obj_trace <- numeric(max_alt)
+  perform_warm_start <- isTRUE(beta_penalty$warm_start) && beta_penalty$l1 > 0
   for (iter in seq_len(max_alt)) {
     b_prev <- b_current
     h_prev <- h_current
+
+    if (beta_penalty$l1 > 0) {
+      Xh_list <- lapply(X_list_proj, function(X) X %*% h_current)
+      if (perform_warm_start && iter == 1) {
+        warm_beta <- matrix(0.0, k, v)
+        for (vx in seq_len(v)) {
+          if (!isTRUE(precompute_xty_flag)) {
+            XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
+          }
+
+          h_vx <- h_current[, vx]
+          DhTy_vx <- vapply(seq_len(k), function(c) {
+            XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
+              XtY_list[[c]][, vx]
+            } else {
+              XtY_cache[[c]]
+            }
+            crossprod(h_vx, XtY_c_vx)
+          }, numeric(1))
+          G_vx <- matrix(0.0, k, k)
+          for (l in seq_len(k)) {
+            if (fullXtX_flag) {
+              for (m in seq_len(k)) {
+                term <- XtX_full_list[[l, m]]
+                G_vx[l, m] <- crossprod(h_vx, term %*% h_vx)
+              }
+            } else {
+              G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
+            }
+          }
+          G_vx <- G_vx + lambda_joint * diag(k)
+          warm_beta[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
+                                       eps = max(epsilon_svd, epsilon_scale))
+        }
+        b_current <- warm_beta
+      }
+    }
+
     for (vx in seq_len(v)) {
-      # FIXED: Compute XtY_cache once per voxel and reuse in both beta and h updates
       if (!isTRUE(precompute_xty_flag)) {
         XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
       }
-      
+
       h_vx <- h_current[, vx]
 
-      DhTy_vx <- vapply(seq_len(k), function(c) {
-        XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
-          XtY_list[[c]][, vx]
-        } else {
-          XtY_cache[[c]]
-        }
-        crossprod(h_vx, XtY_c_vx)
-
-      }, numeric(1))
-      G_vx <- matrix(0.0, k, k)
-      for (l in seq_len(k)) {
-        if (fullXtX_flag) {
-          for (m in seq_len(k)) {
-            term <- XtX_full_list[[l, m]]
-            G_vx[l, m] <- crossprod(h_vx, term %*% h_vx)
+      if (beta_penalty$l1 > 0) {
+        Xh_mat <- vapply(seq_len(k), function(c) Xh_list[[c]][, vx], numeric(n))
+        y_vx <- Y_proj[, vx]
+        fit <- glmnet::glmnet(x = Xh_mat, y = y_vx,
+                              alpha = beta_penalty$alpha,
+                              lambda = beta_penalty$l1,
+                              standardize = FALSE,
+                              intercept = FALSE)
+        b_current[, vx] <- as.numeric(glmnet::coef(fit, s = beta_penalty$l1))[-1]
+      } else {
+        DhTy_vx <- vapply(seq_len(k), function(c) {
+          XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
+            XtY_list[[c]][, vx]
+          } else {
+            XtY_cache[[c]]
           }
-        } else {
-          G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
+          crossprod(h_vx, XtY_c_vx)
+
+        }, numeric(1))
+        G_vx <- matrix(0.0, k, k)
+        for (l in seq_len(k)) {
+          if (fullXtX_flag) {
+            for (m in seq_len(k)) {
+              term <- XtX_full_list[[l, m]]
+              G_vx[l, m] <- crossprod(h_vx, term %*% h_vx)
+            }
+          } else {
+            G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
+          }
         }
-      }
-        # Apply joint ridge penalty to beta update
         G_vx <- G_vx + lambda_joint * diag(k)
         b_current[, vx] <- cholSolve(G_vx + lambda_b * diag(k), DhTy_vx,
                                      eps = max(epsilon_svd, epsilon_scale))
+      }
     }
 
     lhs_block_list <- make_lhs_block_list(

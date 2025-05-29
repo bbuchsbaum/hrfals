@@ -42,8 +42,9 @@
 #'   coefficient vector is still estimated per voxel.
 #' @param precompute_xty_flag Logical; passed to `cf_als_engine`.
 #' @param max_alt Number of alternating updates for `cf_als`.
-#' @param beta_penalty List controlling L1/L2 penalties for the beta-step.
-#'   (Not yet used.)
+#' @param beta_penalty List with elements `l1`, `alpha`, and `warm_start`
+#'   passed to `cf_als_engine` for sparse beta estimation. Set `l1 > 0`
+#'   to enable an Elastic Net update.
 #' @param design_control List of design matrix processing options. Set
 #'   `standardize_predictors = TRUE` to z-score continuous predictors
 #'   before estimation.
