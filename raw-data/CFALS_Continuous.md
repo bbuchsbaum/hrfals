@@ -216,6 +216,11 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
     *   **Acceptance:** Code review confirms block update. The RHS for the $h$-solve correctly uses the full relevant residual.
     *   **Note:** Based on prior review, this seems to be the case. This ticket is primarily for formal verification.
 
+*   **Ticket SP-CFALS-001.5: Add glmnet Dependency**
+    *   **Task:** Add `glmnet` to DESCRIPTION file Imports. Ensure version compatibility and handle any namespace issues.
+    *   **Acceptance:** `glmnet` is properly declared as a dependency. Package builds and existing functionality remains unaffected. `glmnet` functions can be called without issues.
+    *   **Note:** Test that glmnet installation doesn't break existing hrfals functionality.
+
 *   **Ticket SP-CFALS-002: Add New Control Parameters to `hrfals()` and `estimate_hrf_cfals()` Wrappers**
     *   **Task:** Modify `hrfals()` and the underlying `estimate_hrf_cfals()` (or whichever is the main internal dispatcher) to accept:
         *   `beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE)`
@@ -258,12 +263,12 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
 
 *   **Ticket SP-CFALS-006: Clarify and Implement Interaction of `lam_beta` and `beta_penalty`**
     *   **Task:** Define the precise calculation of L2 penalty in the $\beta$-step:
-        *   If `beta_penalty$l1 == 0`: L2 penalty strength is `lam_beta`.
-        *   If `beta_penalty$l1 > 0`: The Elastic Net solver (`glmnet`) handles its own L2 component via `alpha`. The `lam_beta` argument to `hrfals` will act as an *additional* ridge penalty summed with the Elastic Net's L2 term.
-            *   `glmnet`'s effective $\lambda_{L2}$ is $\lambda \cdot (1-\alpha)/2$.
-            *   The total L2 penalty on $\beta_v$ would be $\lambda_{\text{glmnet_L2_component}} + \text{lam_beta}$. This needs careful implementation if `glmnet` doesn't directly allow adding an external L2 penalty; might involve modifying the target function or applying two stages of regularization if simple addition isn't possible (less ideal).
-            *   **Simpler alternative (closer to reviewer):** If `beta_penalty$l1 > 0`, `glmnet` is called with `lambda = beta_penalty$l1` and `alpha = beta_penalty$alpha`. The `lam_beta` argument is *ignored* by `glmnet` itself. If a user *really* wants an additional overall L2 shrinkage on top of what ElasticNet provides, this would be a feature for much later. For now, if `l1>0`, `beta_penalty$alpha` controls the L2/L1 mix for that primary penalty. If `l1=0`, then `lam_beta` controls a pure L2 penalty. This is the cleanest separation.
-    *   **Acceptance:** The L2 penalty applied in the $\beta$-step is correctly determined and documented based on `lam_beta`, `beta_penalty$l1`, and `beta_penalty$alpha`. The simpler alternative is preferred.
+        *   **Decision: Use the simpler alternative.** If `beta_penalty$l1 > 0`, `glmnet` handles all regularization via its `lambda` and `alpha` parameters. The `lam_beta` argument is ignored in this case. If `beta_penalty$l1 == 0`, then `lam_beta` controls pure ridge penalty.
+        *   Implementation details:
+            *   If `beta_penalty$l1 == 0`: L2 penalty strength is `lam_beta`.
+            *   If `beta_penalty$l1 > 0`: `glmnet` is called with `lambda = beta_penalty$l1` and `alpha = beta_penalty$alpha`. The `lam_beta` argument is ignored by the sparse solver.
+        *   This provides the cleanest separation between ridge and sparse estimation paths.
+    *   **Acceptance:** The L2 penalty applied in the $\beta$-step is correctly determined and documented based on `lam_beta`, `beta_penalty$l1`, and `beta_penalty$alpha`. The decision is clearly implemented with no ambiguous penalty mixing.
 
 *   **Ticket SP-CFALS-007: Ensure $h$-Step Scalability with Large $K$**
     *   **Task:** In `cf_als_engine`, when `fullXtX_flag = FALSE`:
@@ -327,9 +332,14 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
     *   **Task:** Create a new vignette demonstrating the use case:
         1.  Simulating/loading fMRI data and a matrix of $K \approx 100-300$ continuous features.
         2.  Setting up the `fmrireg::event_model` to use these features (e.g., perhaps each $x_k(t)$ is a column in the `data` frame passed to `event_model`, and the formula is `onset ~ hrf(x1) + hrf(x2) + ...`, or a more programmatic way to specify many `hrf(x_k)` terms if `fmrireg` supports it, or if this CF-ALS variant will take `X_list_raw` directly). *This part needs careful thought on how users will specify many $x_k(t)$ to `hrfals`.*
-        3.  Running `hrfals()` with the new sparse beta estimation.
-        4.  Visualizing the estimated shared HRF and the sparse $\beta_{k,v}$ weights (e.g., heatmap of $\beta_v$, or which features are selected for example voxels).
-    *   **Acceptance:** Vignette is clear, runnable, and effectively showcases the new functionality.
+        3.  Resolve user interface for specifying many continuous predictors:
+            *   Implement support for `hrf(Ident(x1, ..., xK))` in `create_cfals_design`
+            *   Document the matrix splitting logic ($(K \cdot d)$ matrix → $K$ separate $X_k$ blocks)
+            *   Provide clear examples of both small-K and large-K use cases
+        4.  Running `hrfals()` with the new sparse beta estimation.
+        5.  Visualizing the estimated shared HRF and the sparse $\beta_{k,v}$ weights (e.g., heatmap of $\beta_v$, or which features are selected for example voxels).
+        6.  Interpreting which features drive which voxels.
+    *   **Acceptance:** Vignette is clear, runnable, and effectively showcases the new functionality. The user interface for many continuous predictors is well-documented and demonstrated.
 
 **Considerations for `fmrireg::event_model` interaction (re: Vignette task SP-CFALS-015):**
 
