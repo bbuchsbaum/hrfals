@@ -19,7 +19,11 @@ res2 <- build_voxel_laplacian(vol2)
 test_that("degrees in 2x2x1 volume", {
   expect_equal(res2$degree, c(2, 2, 2, 2))
   expect_true(is(res2$L, "dgCMatrix"))
-  expect_equal(sum(res2$L@x < 0), Matrix::nnzero(res2$L) / 2)
+  # For a 2x2 grid: 4 vertices, 4 edges
+  # Laplacian has 4 positive diagonal elements + 8 negative off-diagonal elements = 12 total
+  # So 8 negative elements out of 12 total (not half)
+  expect_equal(sum(res2$L@x < 0), 8)  # 2 * number of edges
+  expect_equal(Matrix::nnzero(res2$L), 12)  # 4 diagonal + 8 off-diagonal
 })
 
 # Mask with isolated voxel

@@ -31,12 +31,6 @@ lss_check_conditioning <- function(A, lambda_ridge = 0.0) {
     .Call(`_hrfals_lss_check_conditioning`, A, lambda_ridge)
 }
 
-#' Build voxel Laplacian using C++
-#'
-#' @param volume 3D mask volume
-#' @param connectivity neighbourhood definition
-#' @keywords internal
-#' @export
 build_voxel_laplacian_cpp <- function(volume, connectivity = 6L) {
     .Call(`_hrfals_build_voxel_laplacian_cpp`, volume, connectivity)
 }

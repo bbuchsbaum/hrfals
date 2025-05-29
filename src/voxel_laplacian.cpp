@@ -69,29 +69,35 @@ Rcpp::List build_voxel_laplacian_cpp(Rcpp::NumericVector volume, int connectivit
             if(x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) continue;
             int pos = x + nx * y + nx * ny * z;
             int nb = index_map[pos];
-            if(nb > 0 && (k + 1) < nb) {
-                arma::uword from = k;
-                arma::uword to = nb - 1;
-                I.push_back(from);
-                J.push_back(to);
-                I.push_back(to);
-                J.push_back(from);
+            if(nb > 0) {  // nb is 1-based, convert to 0-based
+                arma::uword from = k;           // current voxel (0-based)
+                arma::uword to = nb - 1;        // neighbor voxel (convert to 0-based)
+                if(from < to) {  // avoid duplicate edges by only adding when from < to
+                    I.push_back(from);
+                    J.push_back(to);
+                    I.push_back(to);
+                    J.push_back(from);
+                }
             }
         }
     }
 
     arma::sp_mat Adj(v, v);
     if(!I.empty()) {
-        std::vector<double> val(I.size(), 1.0);
-        Adj = arma::sp_mat(I.begin(), J.begin(), val.begin(), v, v);
+        // Use element-wise construction
+        for(size_t i = 0; i < I.size(); ++i) {
+            Adj(I[i], J[i]) = 1.0;
+        }
     }
 
-    arma::vec degree = arma::sum(Adj, 1);
+    // Convert sparse matrix sum to dense vector using explicit constructor
+    arma::mat degree_mat(arma::sum(Adj, 1));  // Use explicit constructor
+    arma::vec degree = degree_mat.col(0);      // Extract the first column as vector
     arma::sp_mat L = -Adj;
     for(arma::uword i = 0; i < degree.n_elem; ++i) {
         L(i, i) = degree(i);
     }
 
-    return Rcpp::List::create(_["L"] = L, _["degree"] = degree);
+    return Rcpp::List::create(_["L"] = L, _["degree"] = Rcpp::NumericVector(degree.begin(), degree.end()));
 }
 

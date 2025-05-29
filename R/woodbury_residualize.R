@@ -64,7 +64,15 @@ qr_residualize <- function(C, A, lapack_qr = FALSE) {
   }
   
   qrA <- qr(A, LAPACK = lapack_qr)
-  qr.resid(qrA, C)
+  
+  # qr.resid doesn't support LAPACK QR, so use manual projection
+  if (lapack_qr) {
+    # Manual projection: C - Q * (Q^T * C)
+    Q <- qr.Q(qrA)
+    C - Q %*% (t(Q) %*% C)
+  } else {
+    qr.resid(qrA, C)
+  }
 }
 
 #' Automatically choose residualisation strategy

@@ -180,6 +180,10 @@ estimate_hrf_spatial_cfals <- function(fmri_data_obj,
                                        laplacian_obj,
                                        lambda_s_default = 0.1,
                                        ...) {
+  if (missing(laplacian_obj)) {
+    stop("laplacian_obj with elements L and degree must be provided")
+  }
+  
   estimate_hrf_cfals(fmri_data_obj,
                      fmrireg_event_model,
                      target_event_term_name,
