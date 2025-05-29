@@ -33,7 +33,9 @@ hrfals_fit(
 
 \item{fmrireg_hrf_basis_used}{HRF basis object supplied to the wrapper.}
 
-\item{design_info}{List with design metadata (d, k, n, v, fullXtX).}
+\item{design_info}{List with design metadata (d, k, n, v, fullXtX). When
+predictor standardisation is used the vectors `predictor_means` and
+`predictor_sds` are also included.}
 
 \item{residuals}{Residual matrix from the projected data fit.}
 

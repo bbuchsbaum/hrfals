@@ -10,6 +10,7 @@ estimate_hrf_cfals(
   target_event_term_name,
   hrf_basis_for_cfals,
   confound_obj = NULL,
+  baseline_model = NULL,
   method = c("ls_svd_1als", "ls_svd_only", "cf_als"),
   lambda_init = 1,
   lambda_b = 10,
@@ -24,6 +25,9 @@ estimate_hrf_cfals(
   fullXtX = FALSE,
   precompute_xty_flag = TRUE,
   max_alt = 1,
+  beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
+  design_control = list(standardize_predictors = TRUE,
+    cache_design_blocks = TRUE),
   hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
   hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
   ...
@@ -40,11 +44,16 @@ estimate_hrf_cfals(
 
 \item{confound_obj}{Optional confound matrix.}
 
+\item{baseline_model}{Optional baseline model whose design matrix is
+projected alongside \code{confound_obj}.}
+
 \item{method}{Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").}
 
 \item{lambda_init}{Ridge penalty for initial LS solve.}
 
-\item{lambda_b}{Ridge penalty for the beta update.}
+\item{lambda_b}{Ridge penalty for the beta update. When
+\code{beta_penalty$l1 > 0} this value adds to the Elastic Net L2
+component, otherwise it is the sole L2 penalty.}
 
 \item{lambda_h}{Ridge penalty for the h update.}
 \item{lambda_joint}{Joint penalty for the h update.}
@@ -73,6 +82,16 @@ coefficient vector is still estimated per voxel.}
 \item{precompute_xty_flag}{Logical; passed to `cf_als_engine`.}
 
 \item{max_alt}{Number of alternating updates for `cf_als`.}
+
+\item{beta_penalty}{List with elements \code{l1}, \code{alpha}, and
+\code{warm_start} controlling sparse beta estimation. Typical \code{l1}
+values of 0.01--0.1 are useful for standardised predictors. Setting
+\code{warm_start = TRUE} reuses betas from the previous iteration.}
+
+\item{design_control}{List of design preprocessing options. When
+\code{standardize_predictors = TRUE} predictors are z-scored and the
+returned betas are rescaled. If \code{cache_design_blocks = TRUE} the
+lagged design matrices are cached in memory when possible.}
 
 \item{hrf_shape_duration}{Duration in seconds for reconstructed HRF grid.}
 
