@@ -120,11 +120,14 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   sframe <- event_model$sampling_frame
-  sample_times <- samples(sframe, global = TRUE)
-  d <- nbasis(hrf_basis)
-
-  # Extract event information from the event model
-  # We need to manually create design matrices for each condition and basis function
+  d <- fmrireg::nbasis(hrf_basis)
+  
+  # Use the existing design matrix from the event model
+  # The issue is that the event model was created with a default HRF basis
+  # We need to reconstruct with the desired basis
+  
+  # Extract event information and rebuild the design with the correct basis
+  sample_times <- fmrireg::samples(sframe, global = TRUE)
   X_list <- list()
   
   # Get the event terms from the model
@@ -180,7 +183,7 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   list(X_list = X_list,
-       d = nbasis(hrf_basis),
+       d = fmrireg::nbasis(hrf_basis),
        k = length(X_list),
        Phi = Phi,
        h_ref_shape_norm = h_ref)

@@ -261,7 +261,7 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                               lambda = beta_penalty$l1,
                               standardize = FALSE,
                               intercept = FALSE)
-        b_current[, vx] <- as.numeric(glmnet::coef(fit, s = beta_penalty$l1))[-1]
+        b_current[, vx] <- as.numeric(coef(fit, s = beta_penalty$l1))[-1]
       } else {
         DhTy_vx <- vapply(seq_len(k), function(c) {
           XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {

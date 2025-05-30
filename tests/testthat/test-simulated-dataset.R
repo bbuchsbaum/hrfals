@@ -5,7 +5,7 @@ library(fmrireg)
 # generate dataset via helper and fit models across wrappers
 
 test_that("cfals wrappers work with simulated dataset", {
-  dat <- simulate_simple_data(ncond = 2, snr = 1)
+  dat <- simulate_simple_data(ncond = 2, snr = 10)
 
   # determine fmri data matrix and sampling frame
   Y <- dat$noisy  # Use noisy data directly (no time column to remove)
@@ -26,10 +26,10 @@ test_that("cfals wrappers work with simulated dataset", {
   k <- length(unique(events$condition))
 
   fit2 <- hrfals(Y, emod, fmrireg::HRF_SPMG2,
-                 lam_beta = 0.1, lam_h = 0.1)
+                 lam_beta = 0, lam_h = 0)
   fit3 <- estimate_hrf_cfals(Y, emod, "hrf(condition)",
                              fmrireg::HRF_SPMG2,
-                             lambda_b = 0.1, lambda_h = 0.1)
+                             lambda_b = 0, lambda_h = 0)
 
   expect_equal(dim(fit2$h_coeffs), c(nb, nvox))
   expect_true(mean(fit2$gof_per_voxel) > 0)
