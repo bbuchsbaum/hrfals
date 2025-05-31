@@ -120,3 +120,7 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
   B
 }
 
+#' @rdname lss_mode_b
+#' @export
+fastlss_voxel <- lss_mode_b
+

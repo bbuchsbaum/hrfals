@@ -4,16 +4,33 @@
 \alias{benchmark_spatial_cfals}
 \title{Benchmark Spatial CF-ALS}
 \usage{
-benchmark_spatial_cfals(lambda_s_values = c(0, 0.05, 0.1),
-  solver_options = c("direct", "cg"), v_seq = c(20, 40), d = 3,
-  n = 60)
+benchmark_spatial_cfals(
+  lambda_s_values = c(0, 0.05, 0.1),
+  solver_options = c("direct", "cg"),
+  v_seq = c(20, 40),
+  d = 3,
+  n = 60
+)
 }
 \arguments{
-  \item{lambda_s_values}{Vector of spatial penalty strengths to test.}
-  \item{solver_options}{Vector of solver options ("direct" or "cg").}
-  \item{v_seq}{Vector of voxel counts for the synthetic dataset.}
-  \item{d}{Number of basis functions.}
-  \item{n}{Number of time points per voxel.}
+\item{lambda_s_values}{Numeric vector of spatial penalty strengths to test.}
+
+\item{solver_options}{Character vector of solver options ("direct" or "cg").}
+
+\item{v_seq}{Vector of voxel counts for the synthetic dataset.}
+
+\item{d}{Number of basis functions.}
+
+\item{n}{Number of time points per voxel.}
 }
-\value{Data frame summarising runtime and estimation error.}
-\description{Runs the spatial CF-ALS solver for a grid of parameter values on a small synthetic dataset.}
+\value{
+Data frame with columns `v`, `lambda_s`, `solver`, `runtime`,
+  and `h_rmse`.
+}
+\description{
+Runs the spatial CF-ALS solver for a grid of `lambda_s` values and
+solver choices on a small synthetic dataset. The function returns a
+data frame summarising runtime and estimation error for each
+configuration. It is intended for quick performance exploration as
+described in HALS-S08 of the proposal.
+}

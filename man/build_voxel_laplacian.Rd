@@ -7,8 +7,18 @@
 build_voxel_laplacian(volume, connectivity = 6)
 }
 \arguments{
-  \item{volume}{3D array or \code{neuroim2::NeuroVol} mask defining the spatial domain. Non-zero entries denote included voxels.}
-  \item{connectivity}{Neighbourhood definition; one of 6, 18 or 26.}
+\item{volume}{3D array or `neuroim2::NeuroVol` mask defining the
+spatial domain.}
+
+\item{connectivity}{Neighbourhood definition. Either 6, 18 or 26.}
 }
-\value{List with sparse Laplacian matrix \code{L} and degree vector \code{degree}.}
-\description{Constructs an unnormalised graph Laplacian matrix for the voxels contained in a mask volume.}
+\value{
+List with sparse Laplacian matrix `L` (`dgCMatrix`) and the
+  numeric degree vector `degree`.
+}
+\description{
+Constructs an unnormalised graph Laplacian matrix for the voxels
+contained in a 3D mask volume. The function accepts objects that can
+be coerced to an array (e.g. a `neuroim2::NeuroVol`). Non-zero
+elements of the volume are treated as included voxels.
+}

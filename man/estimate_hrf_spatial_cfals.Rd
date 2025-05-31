@@ -15,13 +15,20 @@ estimate_hrf_spatial_cfals(
 )
 }
 \arguments{
-  \item{fmri_data_obj}{See \code{estimate_hrf_cfals}.}
-  \item{fmrireg_event_model}{Design object describing the experiment.}
-  \item{target_event_term_name}{Name of the event term to estimate.}
-  \item{hrf_basis_for_cfals}{HRF basis object.}
-  \item{laplacian_obj}{Object returned by \code{build_voxel_laplacian}.}
-  \item{lambda_s_default}{Default spatial regularisation strength.}
-  \item{...}{Additional arguments passed to \code{estimate_hrf_cfals}.}
+\item{fmri_data_obj}{`fmrireg::fmri_dataset` or numeric BOLD matrix.}
+
+\item{fmrireg_event_model}{An `event_model` describing the full design.}
+
+\item{target_event_term_name}{Name of the event_term to estimate.}
+
+\item{hrf_basis_for_cfals}{An `HRF` object with `nbasis > 1`.}
+
+\item{laplacian_obj}{Optional list containing the Laplacian matrix `L` and
+degree vector `degree` as returned by [build_voxel_laplacian()].
+Required when `lambda_s > 0`.}
+
+\item{lambda_s_default}{Default spatial regularisation strength.}
 }
-\value{An \code{hrfals_fit} object.}
-\description{Calls \code{estimate_hrf_cfals()} with a predefined non-zero spatial penalty.}
+\description{
+Calls [estimate_hrf_cfals()] with a predefined non-zero `lambda_s`.
+}

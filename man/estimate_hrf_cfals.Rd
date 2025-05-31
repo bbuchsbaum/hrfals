@@ -20,14 +20,13 @@ estimate_hrf_cfals(
   laplacian_obj = NULL,
   h_solver = c("direct", "cg", "auto"),
   cg_max_iter = 100,
-  cg_tol = 1e-4,
+  cg_tol = 1e-04,
   R_mat = c("identity", "basis_default"),
   fullXtX = FALSE,
   precompute_xty_flag = TRUE,
-  max_alt = 1,
+  max_alt = 10,
   beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
-  design_control = list(standardize_predictors = TRUE,
-    cache_design_blocks = TRUE),
+  design_control = list(standardize_predictors = TRUE, cache_design_blocks = TRUE),
   hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
   hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
   ...
@@ -45,32 +44,43 @@ estimate_hrf_cfals(
 \item{confound_obj}{Optional confound matrix.}
 
 \item{baseline_model}{Optional baseline model whose design matrix is
-projected alongside \code{confound_obj}.}
+projected along with `confound_obj`.}
 
 \item{method}{Estimation engine to use ("ls_svd_only", "ls_svd_1als", "cf_als").}
 
 \item{lambda_init}{Ridge penalty for initial LS solve.}
 
 \item{lambda_b}{Ridge penalty for the beta update. When
-\code{beta_penalty$l1 > 0} this value adds to the Elastic Net L2
-component, otherwise it is the sole L2 penalty.}
+`beta_penalty$l1 > 0` this value adds to the Elastic Net L2
+component, otherwise it is the sole L2 penalty as in classic CF-ALS.}
 
 \item{lambda_h}{Ridge penalty for the h update.}
-\item{lambda_joint}{Joint penalty for the h update.}
-\item{lambda_s}{Spatial regularization strength controlling the amount of
-voxel-wise smoothing.  For comparable smoothing across different voxel
-sizes consider scaling \code{lambda_s} by \code{1 / mean(voxel\_size)^2}.}
-\item{laplacian_obj}{List containing the sparse Laplacian matrix \code{L} and
-degree vector as returned by \code{build_voxel_laplacian}. Required when
-\code{lambda_s > 0}.}
-\item{h_solver}{Solver for the spatial h-update.}
-\item{cg_max_iter}{Maximum iterations for CG solver.}
-\item{cg_tol}{Tolerance for CG solver convergence.}
 
-\item{R_mat}{Either the string \code{"identity"} (default) or
-\code{"basis_default"} to request an automatically generated penalty
-matrix, or a numeric matrix specifying a custom penalty for the h
-update.}
+\item{lambda_joint}{Joint penalty for the h update.}
+
+\item{lambda_s}{Spatial regularization strength controlling the amount of
+voxel-wise smoothing.  The effective physical smoothness depends on the
+value of `lambda_s` relative to the voxel size.  For similar behaviour
+across datasets with different resolutions consider scaling
+`lambda_s` by `1 / mean(voxel_size)^2`.  Set to zero to disable spatial
+smoothing.}
+
+\item{laplacian_obj}{Optional list containing the Laplacian matrix `L` and
+degree vector `degree` as returned by [build_voxel_laplacian()].
+Required when `lambda_s > 0`.}
+
+\item{h_solver}{Solver to use for the spatial h-update. One of
+"direct", "cg" or "auto".}
+
+\item{cg_max_iter}{Maximum iterations for the conjugate gradient solver when
+`h_solver = "cg"`.}
+
+\item{cg_tol}{Convergence tolerance for the conjugate gradient solver.}
+
+\item{R_mat}{Either the character string "identity" (default) or
+"basis_default" to indicate how the penalty matrix should be
+constructed, or a numeric matrix providing a custom penalty for the
+h update.}
 
 \item{fullXtX}{Logical. If `TRUE`, the h-update step uses the full
 Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)}
@@ -83,15 +93,19 @@ coefficient vector is still estimated per voxel.}
 
 \item{max_alt}{Number of alternating updates for `cf_als`.}
 
-\item{beta_penalty}{List with elements \code{l1}, \code{alpha}, and
-\code{warm_start} controlling sparse beta estimation. Typical \code{l1}
-values of 0.01--0.1 are useful for standardised predictors. Setting
-\code{warm_start = TRUE} reuses betas from the previous iteration.}
+\item{beta_penalty}{List with elements `l1`, `alpha`, and `warm_start`
+controlling sparse beta estimation. Set `l1 > 0` to engage the
+Elastic Net solver with mixing parameter `alpha` in \[0,1\]. Typical
+`l1` values between 0.01 and 0.1 work well for standardised inputs.
+When `warm_start = TRUE` the previous iteration's betas are used as the
+starting point which improves convergence.}
 
-\item{design_control}{List of design preprocessing options. When
-\code{standardize_predictors = TRUE} predictors are z-scored and the
-returned betas are rescaled. If \code{cache_design_blocks = TRUE} the
-lagged design matrices are cached in memory when possible.}
+\item{design_control}{List of design matrix processing options. Set
+`standardize_predictors = TRUE` to z-score continuous predictors
+before estimation. Resulting betas are rescaled back to the original
+predictor units. If `cache_design_blocks = TRUE` the time-lagged
+predictor matrices are stored in memory when feasible to accelerate
+repeated HRF updates.}
 
 \item{hrf_shape_duration}{Duration in seconds for reconstructed HRF grid.}
 

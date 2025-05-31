@@ -2,13 +2,13 @@
 % Please edit documentation in R/hrfals_interface.R
 \name{hrfals_control_defaults}
 \alias{hrfals_control_defaults}
-\title{Default control values for hrfals}
+\title{hrfals control defaults}
 \usage{
 hrfals_control_defaults()
 }
 \value{
-Named list of default algorithm parameters used by \code{hrfals}.
+Named list of defaults used by [hrfals()].
 }
 \description{
-Returns the default tuning parameters for \code{hrfals()}.
+Returns a list of default tuning parameters for `hrfals()`.
 }

@@ -109,3 +109,7 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
   dimnames(B) <- list(colnames(C), colnames(Y))
   B
 }
+
+#' @rdname lss_mode_a
+#' @export
+fastlss_shared <- lss_mode_a
