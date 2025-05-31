@@ -1,7 +1,7 @@
 #' Benchmark fastLSS implementation
 #'
 #' Provides simple performance benchmarks comparing the fastLSS
-#' implementation in \code{lss_mode_a()} to a naive R reference.
+#' implementation in \code{fastlss_shared()} to a naive R reference.
 #' The function also supports basic scaling tests over different
 #' dataset sizes and reports approximate memory usage.
 #'
@@ -52,8 +52,8 @@ benchmark_fastlss <- function(n_seq = c(40, 80),
         dat <- simulate_data(n, Tt, v)
         mem <- sum(sapply(dat, object.size))
         t_fast <- system.time(
-          lss_mode_a(dat$Y, dat$A, dat$C, dat$p,
-                     lambda_ridge = lambda_ridge)
+          fastlss_shared(dat$Y, dat$A, dat$C, dat$p,
+                         lambda_ridge = lambda_ridge)
         )["elapsed"]
         t_naive <- system.time(
           naive_lss_mode_a(dat$Y, dat$A, dat$C, dat$p,

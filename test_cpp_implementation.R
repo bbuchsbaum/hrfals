@@ -25,11 +25,11 @@ lambda_ridge <- 0.1
 
 # Test R implementation
 cat("Running R implementation...\n")
-result_r <- lss_mode_a(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = FALSE)
+result_r <- fastlss_shared(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = FALSE)
 
 # Test C++ implementation
 cat("Running C++ implementation...\n")
-result_cpp <- lss_mode_a(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = TRUE)
+result_cpp <- fastlss_shared(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = TRUE)
 
 # Compare results
 max_diff <- max(abs(result_r - result_cpp))
@@ -62,9 +62,9 @@ p_vec_bench <- rnorm(n_bench)
 
 cat("Running microbenchmark (this may take a moment)...\n")
 benchmark_result <- microbenchmark(
-  R_impl = lss_mode_a(Y_bench, A_bench, C_bench, p_vec_bench, 
+  R_impl = fastlss_shared(Y_bench, A_bench, C_bench, p_vec_bench,
                       lambda_ridge = lambda_ridge, use_cpp = FALSE),
-  CPP_impl = lss_mode_a(Y_bench, A_bench, C_bench, p_vec_bench, 
+  CPP_impl = fastlss_shared(Y_bench, A_bench, C_bench, p_vec_bench,
                         lambda_ridge = lambda_ridge, use_cpp = TRUE),
   times = 10
 )
@@ -108,9 +108,9 @@ C_collinear <- C_bench
 C_collinear[, 1] <- A_bench[, 1]  # Make first trial collinear with nuisance
 
 cat("Testing collinear trial regressor...\n")
-result_edge_r <- lss_mode_a(Y_bench, A_bench, C_collinear, p_vec_bench, 
+result_edge_r <- fastlss_shared(Y_bench, A_bench, C_collinear, p_vec_bench,
                             lambda_ridge = 1e-6, use_cpp = FALSE)
-result_edge_cpp <- lss_mode_a(Y_bench, A_bench, C_collinear, p_vec_bench, 
+result_edge_cpp <- fastlss_shared(Y_bench, A_bench, C_collinear, p_vec_bench,
                               lambda_ridge = 1e-6, use_cpp = TRUE)
 
 edge_diff <- max(abs(result_edge_r - result_edge_cpp))
@@ -153,7 +153,7 @@ for (i in 1:nrow(sizes)) {
   # Time R implementation (multiple runs for better precision)
   r_times <- replicate(5, {
     system.time({
-      lss_mode_a(Y_i, A_i, C_i, p_vec_i, lambda_ridge = lambda_ridge, use_cpp = FALSE)
+      fastlss_shared(Y_i, A_i, C_i, p_vec_i, lambda_ridge = lambda_ridge, use_cpp = FALSE)
     })["elapsed"]
   })
   r_time <- median(r_times)
@@ -161,7 +161,7 @@ for (i in 1:nrow(sizes)) {
   # Time C++ implementation (multiple runs for better precision)
   cpp_times <- replicate(5, {
     system.time({
-      lss_mode_a(Y_i, A_i, C_i, p_vec_i, lambda_ridge = lambda_ridge, use_cpp = TRUE)
+      fastlss_shared(Y_i, A_i, C_i, p_vec_i, lambda_ridge = lambda_ridge, use_cpp = TRUE)
     })["elapsed"]
   })
   cpp_time <- median(cpp_times)

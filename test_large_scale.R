@@ -50,14 +50,14 @@ for (i in 1:nrow(sizes)) {
   # Time R implementation
   cat("  R implementation... ")
   r_time <- system.time({
-    result_r <- lss_mode_a(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = FALSE)
+    result_r <- fastlss_shared(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = FALSE)
   })["elapsed"]
   cat(sprintf("%.2fs\n", r_time))
   
   # Time C++ implementation
   cat("  C++ implementation... ")
   cpp_time <- system.time({
-    result_cpp <- lss_mode_a(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = TRUE)
+    result_cpp <- fastlss_shared(Y, A, C, p_vec, lambda_ridge = lambda_ridge, use_cpp = TRUE)
   })["elapsed"]
   cat(sprintf("%.2fs\n", cpp_time))
   
