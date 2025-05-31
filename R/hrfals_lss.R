@@ -1,7 +1,7 @@
 #' Beta-series estimation using fast LSS
 #'
 #' Builds trial regressors from a CF-ALS fit and event information and
-#' calls \code{lss_mode_a()} or \code{lss_mode_b()} as appropriate.
+#' calls \code{fastlss_shared()} or \code{fastlss_voxel()} as appropriate.
 #'
 #' @param cf_fit An object of class `hrfals_fit` as returned by
 #'   [hrfals()] or [fmrireg_cfals()].
@@ -17,8 +17,8 @@
 #'   a single HRF is present in `cf_fit$h_coeffs` and "voxel" otherwise.
 #' @param whitening_matrix Optional whitening matrix applied to all
 #'   design matrices before running the kernel.
-#' @param ... Additional arguments passed to [lss_mode_a()] or
-#'   [lss_mode_b()].
+#' @param ... Additional arguments passed to [fastlss_shared()] or
+#'   [fastlss_voxel()].
 #' @return An object of class `fastlss_fit` containing the trial
 #'   coefficient matrix and metadata.
 #' @export
@@ -72,11 +72,11 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
       C[, t] <- X_list[[t]] %*% h_shared
     }
     p_vec <- rep(0, nrow(Y))
-    B <- lss_mode_a(Y, matrix(0, nrow(Y), 0), C, p_vec,
+    B <- fastlss_shared(Y, matrix(0, nrow(Y), 0), C, p_vec,
                     W = whitening_matrix, ...)
   } else {
     p_vec <- rep(0, nrow(Y))
-    B <- lss_mode_b(Y, matrix(0, nrow(Y), 0), X_list,
+    B <- fastlss_voxel(Y, matrix(0, nrow(Y), 0), X_list,
                     cf_fit$h_coeffs, p_vec,
                     W = whitening_matrix, ...)
   }
