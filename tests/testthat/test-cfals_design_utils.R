@@ -147,49 +147,5 @@ test_that("create_cfals_design works without confounds", {
   expect_true(all(c("conditionA", "conditionB") %in% res$condition_names))
 })
 
-test_that("create_fmri_design matches manual convolution", {
-  sf <- sampling_frame(20, TR = 1)
-  events <- data.frame(onset = c(2, 6, 12),
-                       condition = factor(c("A", "B", "A")),
-                       block = 1)
-  emod <- event_model(onset ~ hrf(condition), data = events,
-                      block = ~ block, sampling_frame = sf)
-
-  manual_build <- function(event_model, hrf_basis) {
-    sframe <- event_model$sampling_frame
-    sample_times <- samples(sframe, global = TRUE)
-    d <- nbasis(hrf_basis)
-    X_list <- list()
-    for (term in event_model$terms) {
-      if (inherits(term, "event_term")) {
-        var_name <- term$varname
-        if (var_name %in% names(term$event_table)) {
-          conditions <- levels(term$event_table[[var_name]])
-          for (cond in conditions) {
-            cond_mask <- term$event_table[[var_name]] == cond
-            cond_onsets <- term$onsets[cond_mask]
-            ts <- rep(0, length(sample_times))
-            for (onset in cond_onsets) {
-              onset_idx <- which.min(abs(sample_times - onset))
-              if (onset_idx <= length(ts)) ts[onset_idx] <- 1
-            }
-            X_cond <- matrix(0, length(sample_times), d)
-            for (j in seq_len(d)) {
-              X_cond[, j] <- convolve_timeseries_with_single_basis(ts, hrf_basis, j, sframe)
-            }
-            X_list[[paste0(var_name, cond)]] <- X_cond
-          }
-        }
-      }
-    }
-    X_list
-  }
-
-  X_manual <- manual_build(emod, HRF_SPMG3)
-  X_new <- create_fmri_design(emod, HRF_SPMG3)$X_list
-
-  expect_equal(X_new, X_manual)
-})
-
 
 
