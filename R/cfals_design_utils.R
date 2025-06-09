@@ -121,53 +121,18 @@ create_fmri_design <- function(event_model, hrf_basis) {
 
   sframe <- event_model$sampling_frame
   d <- fmrireg::nbasis(hrf_basis)
-  
-  # Use the existing design matrix from the event model
-  # The issue is that the event model was created with a default HRF basis
-  # We need to reconstruct with the desired basis
-  
-  # Extract event information and rebuild the design with the correct basis
-  sample_times <- fmrireg::samples(sframe, global = TRUE)
   X_list <- list()
-  
-  # Get the event terms from the model
+
   terms <- event_model$terms
-  
-  # For each term that involves HRF convolution
   for (term in terms) {
     if (inherits(term, "event_term")) {
-      # Get the variable name for this term
       var_name <- term$varname
-      
-      # Get the conditions for this term from the event_table
       if (var_name %in% names(term$event_table)) {
         conditions <- levels(term$event_table[[var_name]])
-        
-        # For each condition, create a design matrix with d columns (one per basis function)
-        for (cond in conditions) {
-          # Get events for this condition
-          cond_mask <- term$event_table[[var_name]] == cond
-          cond_onsets <- term$onsets[cond_mask]
-          
-          # Create design matrix for this condition with d columns
-          X_cond <- matrix(0, length(sample_times), d)
-          
-          # For each basis function
-          for (j in seq_len(d)) {
-            # Create a timeseries with impulses at event onsets
-            ts <- rep(0, length(sample_times))
-            for (onset in cond_onsets) {
-              onset_idx <- which.min(abs(sample_times - onset))
-              if (onset_idx <= length(ts)) {
-                ts[onset_idx] <- 1
-              }
-            }
-            
-            # Convolve with the j-th basis function
-            X_cond[, j] <- convolve_timeseries_with_single_basis(ts, hrf_basis, j, sframe)
-          }
-          
-          X_list[[paste0(var_name, cond)]] <- X_cond
+        X_term <- fmrireg::design_matrix(term, basis = hrf_basis, drop.empty = TRUE)
+        for (i in seq_along(conditions)) {
+          idx <- ((i - 1) * d + 1):(i * d)
+          X_list[[paste0(var_name, conditions[i])]] <- X_term[, idx, drop = FALSE]
         }
       }
     }
