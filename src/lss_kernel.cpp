@@ -114,21 +114,14 @@ arma::mat lss_kernel_cpp(const arma::mat& C,
   // Step 5: Compute cv_row = colSums(V * V) (1 x T)
   arma::rowvec cv_row = arma::sum(V % V, 0);
   
-  // Step 6: Compute alpha_row = (1 - pc_row) / cv_row (1 x T)
-  arma::rowvec alpha_row(T);
-  for(arma::uword t = 0; t < T; ++t) {
-    if(cv_row(t) > denom_tol) {
-      alpha_row(t) = (1.0 - pc_row(t)) / cv_row(t);
-    } else {
-      alpha_row(t) = 0.0;
-    }
-  }
-  
-  // Step 7: Construct S (n x T): S_t = p_vec + alpha_row[t] * V_t
-  arma::mat S(n, T);
-  for(arma::uword t = 0; t < T; ++t) {
-    S.col(t) = p_vec + alpha_row(t) * V.col(t);
-  }
+  // Step 6: Compute alpha_row = (1 - pc_row) / cv_row (1 x T) using
+  // element-wise operations and zero out small denominators
+  arma::rowvec alpha_row = arma::zeros<arma::rowvec>(T);
+  arma::uvec valid_idx = arma::find(cv_row > denom_tol);
+  alpha_row.elem(valid_idx) = (1.0 - pc_row.elem(valid_idx)) / cv_row.elem(valid_idx);
+
+  // Step 7: Construct S (n x T) using broadcasting
+  arma::mat S = arma::repmat(p_vec, 1, T) + V.each_row() % alpha_row;
   
   // Step 8: Compute B = S^T * Y (T x V)
   arma::mat B = S.t() * Y;
