@@ -65,6 +65,9 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
     trial_names <- paste0("T", seq_len(Tt))
   B <- matrix(0, Tt, v)
 
+  ## Precompute stacked onset matrices for efficient voxel loop
+  X_onset_stack <- do.call(rbind, X_onset_list)
+
   if (!is.null(mem_limit) && is.null(chunk_size)) {
     bytes_limit <- mem_limit * 1024^2
     max_chunk <- floor(bytes_limit / (8 * n))
@@ -77,10 +80,8 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
 
   for (vx in seq_len(v)) {
     h_v <- H_allvoxels[, vx]
-    C_v <- matrix(0, n, Tt)
-    for (t in seq_len(Tt)) {
-      C_v[, t] <- X_onset_list[[t]] %*% h_v
-    }
+    C_v <- matrix(X_onset_stack %*% h_v, nrow = n, ncol = Tt,
+                  byrow = FALSE)
 
     if (is.null(chunk_size) || chunk_size >= Tt) {
       V_v <- auto_residualize(C_v, A, lambda_ridge,
