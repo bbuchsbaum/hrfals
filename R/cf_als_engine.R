@@ -26,27 +26,31 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, XtX_diag,
   penalty_mat <- if (is.null(R_mat_eff)) diag(d) else R_mat_eff
   base_lhs <- lambda_h * penalty_mat + lambda_joint * diag(d)
   lhs_list <- vector("list", v)
+
+  if (fullXtX_flag) {
+    XtX_full_vec <- as.vector(XtX_full_list)
+  }
+
   for (vx in seq_len(v)) {
     lhs_vx <- base_lhs
     b_vx <- b_current[, vx]
+
     if (fullXtX_flag) {
-      for (l in seq_len(k)) {
-        for (m in seq_len(k)) {
-          lhs_vx <- lhs_vx + b_vx[l] * b_vx[m] * XtX_full_list[[l, m]]
-        }
-      }
+      weights <- as.vector(outer(b_vx, b_vx))
+      weighted_terms <- Map(`*`, XtX_full_vec, weights)
+      lhs_vx <- lhs_vx + Reduce(`+`, weighted_terms)
     } else {
       if (!is.null(XtX_diag)) {
-        diag(lhs_vx) <- diag(lhs_vx) +
-          as.numeric(crossprod(b_vx^2, XtX_diag))
+        diag(lhs_vx) <- diag(lhs_vx) + drop((b_vx^2) %*% XtX_diag)
       } else {
-        for (l in seq_len(k)) {
-          lhs_vx <- lhs_vx + b_vx[l]^2 * XtX_list[[l]]
-        }
+        weighted_terms <- Map(function(X, w) X * w, XtX_list, b_vx^2)
+        lhs_vx <- lhs_vx + Reduce(`+`, weighted_terms)
       }
     }
+
     lhs_list[[vx]] <- lhs_vx
   }
+
   lhs_list
 }
 
@@ -209,37 +213,39 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     b_prev <- b_current
     h_prev <- h_current
 
+    XtY_iter_list <- if (isTRUE(precompute_xty_flag)) {
+      XtY_list
+    } else {
+      lapply(X_list_proj, function(X) crossprod(X, Y_proj))
+    }
+
+    DhTy_mat <- matrix(0.0, k, v)
+    for (c in seq_len(k)) {
+      DhTy_mat[c, ] <- colSums(h_current * XtY_iter_list[[c]])
+    }
+
+    G_array <- array(0.0, dim = c(k, k, v))
+    if (fullXtX_flag) {
+      for (l in seq_len(k)) {
+        for (m in seq_len(k)) {
+          G_array[l, m, ] <- colSums(h_current *
+                                      (XtX_full_list[[l, m]] %*% h_current))
+        }
+      }
+    } else {
+      for (l in seq_len(k)) {
+        G_array[l, l, ] <- colSums(h_current * (XtX_list[[l]] %*% h_current))
+      }
+    }
+
     if (beta_penalty$l1 > 0) {
       Xh_list <- lapply(X_list_proj, function(X) X %*% h_current)
       if (perform_warm_start && iter == 1) {
         warm_beta <- matrix(0.0, k, v)
         for (vx in seq_len(v)) {
-          if (!isTRUE(precompute_xty_flag)) {
-            XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-          }
-
-          h_vx <- h_current[, vx]
-          DhTy_vx <- vapply(seq_len(k), function(c) {
-            XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
-              XtY_list[[c]][, vx]
-            } else {
-              XtY_cache[[c]]
-            }
-            crossprod(h_vx, XtY_c_vx)
-          }, numeric(1))
-          G_vx <- matrix(0.0, k, k)
-          for (l in seq_len(k)) {
-            if (fullXtX_flag) {
-              for (m in seq_len(k)) {
-                term <- XtX_full_list[[l, m]]
-                G_vx[l, m] <- crossprod(h_vx, term %*% h_vx)
-              }
-            } else {
-              G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
-            }
-          }
-          G_vx <- G_vx + lambda_joint * diag(k)
-          warm_beta[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k), DhTy_vx,
+          G_vx <- G_array[, , vx] + lambda_joint * diag(k)
+          warm_beta[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k),
+                                       DhTy_mat[, vx],
                                        eps = max(epsilon_svd, epsilon_scale))
         }
         b_current <- warm_beta
@@ -247,10 +253,6 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     }
 
     for (vx in seq_len(v)) {
-      if (!isTRUE(precompute_xty_flag)) {
-        XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-      }
-
       h_vx <- h_current[, vx]
 
       if (beta_penalty$l1 > 0) {
@@ -263,27 +265,8 @@ cf_als_engine <- function(X_list_proj, Y_proj,
                               intercept = FALSE)
         b_current[, vx] <- as.numeric(coef(fit, s = beta_penalty$l1))[-1]
       } else {
-        DhTy_vx <- vapply(seq_len(k), function(c) {
-          XtY_c_vx <- if (isTRUE(precompute_xty_flag)) {
-            XtY_list[[c]][, vx]
-          } else {
-            XtY_cache[[c]]
-          }
-          crossprod(h_vx, XtY_c_vx)
-
-        }, numeric(1))
-        G_vx <- matrix(0.0, k, k)
-        for (l in seq_len(k)) {
-          if (fullXtX_flag) {
-            for (m in seq_len(k)) {
-              term <- XtX_full_list[[l, m]]
-              G_vx[l, m] <- crossprod(h_vx, term %*% h_vx)
-            }
-          } else {
-            G_vx[l, l] <- crossprod(h_vx, XtX_list[[l]] %*% h_vx)
-          }
-        }
-        G_vx <- G_vx + lambda_joint * diag(k)
+        DhTy_vx <- DhTy_mat[, vx]
+        G_vx <- G_array[, , vx] + lambda_joint * diag(k)
         b_current[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k), DhTy_vx,
                                      eps = max(epsilon_svd, epsilon_scale))
       }
@@ -297,21 +280,9 @@ cf_als_engine <- function(X_list_proj, Y_proj,
 
     if (lambda_s > 0 && current_solver == "cg") {
       RHS_mat <- matrix(0.0, d, v)
-      for (vx in seq_len(v)) {
-        if (!isTRUE(precompute_xty_flag)) {
-          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-        }
-        b_vx <- b_current[, vx]
-        rhs <- numeric(d)
-        for (l in seq_len(k)) {
-          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
-            XtY_list[[l]][, vx]
-          } else {
-            XtY_cache[[l]]
-          }
-          rhs <- rhs + b_vx[l] * XtY_l_vx
-        }
-        RHS_mat[, vx] <- rhs
+      for (l in seq_len(k)) {
+        RHS_mat <- RHS_mat + XtY_iter_list[[l]] *
+          matrix(rep(b_current[l, ], each = d), d, v)
       }
 
       A_H_spatial <- construct_A_H_sparse(lhs_block_list, lambda_s, L_mat, d, v)
@@ -335,21 +306,9 @@ cf_als_engine <- function(X_list_proj, Y_proj,
       }
     } else if (lambda_s > 0 && current_solver == "direct") {
       RHS_mat <- matrix(0.0, d, v)
-      for (vx in seq_len(v)) {
-        if (!isTRUE(precompute_xty_flag)) {
-          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-        }
-        b_vx <- b_current[, vx]
-        rhs <- numeric(d)
-        for (l in seq_len(k)) {
-          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
-            XtY_list[[l]][, vx]
-          } else {
-            XtY_cache[[l]]
-          }
-          rhs <- rhs + b_vx[l] * XtY_l_vx
-        }
-        RHS_mat[, vx] <- rhs
+      for (l in seq_len(k)) {
+        RHS_mat <- RHS_mat + XtY_iter_list[[l]] *
+          matrix(rep(b_current[l, ], each = d), d, v)
       }
 
       A_H_spatial <- construct_A_H_sparse(lhs_block_list, lambda_s, L_mat, d, v)
@@ -361,22 +320,14 @@ cf_als_engine <- function(X_list_proj, Y_proj,
         b_current[, vx] <- b_current[, vx] * s
       }
     } else {
+      RHS_mat <- matrix(0.0, d, v)
+      for (l in seq_len(k)) {
+        RHS_mat <- RHS_mat + XtY_iter_list[[l]] *
+          matrix(rep(b_current[l, ], each = d), d, v)
+      }
       for (vx in seq_len(v)) {
-        if (!isTRUE(precompute_xty_flag)) {
-          XtY_cache <- lapply(X_list_proj, function(X) crossprod(X, Y_proj[, vx]))
-        }
-        b_vx <- b_current[, vx]
         lhs <- lhs_block_list[[vx]]
-        rhs <- numeric(d)
-        for (l in seq_len(k)) {
-          XtY_l_vx <- if (isTRUE(precompute_xty_flag)) {
-            XtY_list[[l]][, vx]
-          } else {
-            XtY_cache[[l]]
-          }
-          rhs <- rhs + b_vx[l] * XtY_l_vx
-        }
-        # Block solve for entire h vector for this voxel
+        rhs <- RHS_mat[, vx]
         h_current[, vx] <- cholSolve(lhs, rhs,
                                      eps = max(epsilon_svd, epsilon_scale))
         s <- max(abs(h_current[, vx]), epsilon_scale)
