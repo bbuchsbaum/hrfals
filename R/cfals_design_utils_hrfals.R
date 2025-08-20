@@ -14,12 +14,12 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
                                                   basis_function_index,
                                                   sampling_frame) {
   stopifnot(inherits(hrf, "HRF"))
-  nb <- nbasis(hrf)
+  nb <- fmrihrf::nbasis(hrf)
   if (basis_function_index < 1 || basis_function_index > nb) {
     stop("basis_function_index out of range")
   }
   grid <- seq(0, attr(hrf, "span"), by = sampling_frame$TR[1])
-  vals <- evaluate(hrf, grid)
+  vals <- fmrihrf::evaluate(hrf, grid)
   if (is.vector(vals)) {
     vals <- matrix(vals, ncol = 1L)
   }
@@ -101,7 +101,7 @@ create_cfals_design <- function(fmri_data_obj,
   }
 
   # Get basis dimensions
-  d_basis_dim <- fmrireg::nbasis(hrf_basis)
+  d_basis_dim <- fmrihrf::nbasis(hrf_basis)
   if (d_basis_dim <= 1) {
     stop("CF-ALS requires an hrf_basis with nbasis > 1")
   }
@@ -145,6 +145,15 @@ create_cfals_design <- function(fmri_data_obj,
   proj <- project_confounds(Y_raw, X_list_raw, confound_obj)
   Y_proj <- proj$Y
   X_list_proj <- proj$X_list
+  
+  # Zero out bad rows again after projection (QR projection can introduce non-zero values)
+  if (length(bad_row_idx) > 0) {
+    Y_proj[bad_row_idx, ] <- 0
+    X_list_proj <- lapply(X_list_proj, function(X) {
+      X[bad_row_idx, ] <- 0
+      X
+    })
+  }
 
   # Determine whether to cache the projected design blocks
   size_est <- as.numeric(k_conditions) * n_timepoints * d_basis_dim * 8
@@ -166,6 +175,14 @@ create_cfals_design <- function(fmri_data_obj,
       X_list_proj[[i]] <- (X_list_proj[[i]] - mu_i) / sd_i
       predictor_means[i] <- mu_i
       predictor_sds[i] <- sd_i
+    }
+    
+    # Zero out bad rows again after standardization
+    if (length(bad_row_idx) > 0) {
+      X_list_proj <- lapply(X_list_proj, function(X) {
+        X[bad_row_idx, ] <- 0
+        X
+      })
     }
   }
 

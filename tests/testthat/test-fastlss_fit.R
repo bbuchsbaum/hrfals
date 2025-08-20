@@ -7,7 +7,7 @@ make_cfals_fit <- function() {
   dinfo <- list(d = 1, k = 1, n = 1, v = 2,
                 predictor_means = 0, predictor_sds = 1)
   hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-             call("hrfals_fit"), fmrireg::HRF_SPMG1, "term", phi, dinfo,
+             call("hrfals_fit"), fmrihrf::HRF_SPMG1, "term", phi, dinfo,
              matrix(0, 1, 1),
              beta_penalty = list(l1 = 0.1, alpha = 1, warm_start = TRUE))
 }
@@ -17,7 +17,7 @@ test_that("fastlss_fit constructor works", {
   cf_fit <- make_cfals_fit()
   fit <- fastlss_fit(betas, mode = "shared", cfals_fit = cf_fit,
                      events = data.frame(onset = 1, condition = "A"),
-                     hrf_basis = fmrireg::HRF_SPMG1,
+                     hrf_basis = fmrihrf::HRF_SPMG1,
                      call = quote(test_call()))
   expect_s3_class(fit, "fastlss_fit")
   expect_equal(fit$betas, betas)
@@ -30,7 +30,7 @@ test_that("fastlss_fit print and summary work", {
   cf_fit <- make_cfals_fit()
   fit <- fastlss_fit(betas, mode = "shared", cfals_fit = cf_fit,
                      events = data.frame(onset = 1, condition = "A"),
-                     hrf_basis = fmrireg::HRF_SPMG1,
+                     hrf_basis = fmrihrf::HRF_SPMG1,
                      call = quote(test_call()))
   expect_output(print(fit), "fastLSS beta-series")
   expect_output(print(summary(fit)), "Summary of fastLSS fit")

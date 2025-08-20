@@ -38,8 +38,8 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
   Y_noisy <- Y_clean + rnorm(n_timepoints, 0, noise_level * sd(Y_clean))
   
   # Create design matrix using FIR basis
-  hrf_basis <- fmrireg::HRF_FIR
-  d <- fmrireg::nbasis(hrf_basis)
+  hrf_basis <- fmrihrf::HRF_FIR
+  d <- fmrihrf::nbasis(hrf_basis)
   
   # Create design matrix for single condition
   X_design <- matrix(0, n_timepoints, d)
@@ -60,7 +60,7 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
@@ -76,8 +76,8 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
 }
 
 test_that("ls_svd_engine recovers canonical HRF shape better than alternative", {
-  # Test 1: Generate data with canonical HRF (HRF_SPMG1)
-  data_canonical <- generate_hrf_recovery_data(fmrireg::HRF_SPMG1, noise_level = 0.05)
+  # Test 1: Generate data with canonical HRF (fmrihrf::HRF_SPMG1)
+  data_canonical <- generate_hrf_recovery_data(fmrihrf::HRF_SPMG1, noise_level = 0.05)
   
   # Run ls_svd_engine
   result_canonical <- ls_svd_engine(
@@ -132,7 +132,7 @@ test_that("ls_svd_engine recovers canonical HRF shape better than alternative", 
 
 test_that("ls_svd_engine produces reasonable HRF estimates", {
   # Generate data with canonical HRF
-  data <- generate_hrf_recovery_data(fmrireg::HRF_SPMG1, noise_level = 0.1)
+  data <- generate_hrf_recovery_data(fmrihrf::HRF_SPMG1, noise_level = 0.1)
   
   # Run ls_svd_engine
   result <- ls_svd_engine(
@@ -152,7 +152,7 @@ test_that("ls_svd_engine produces reasonable HRF estimates", {
   expect_true("Gamma_hat" %in% names(result))
   
   # Check dimensions
-  expect_equal(nrow(result$h), fmrireg::nbasis(fmrireg::HRF_FIR))
+  expect_equal(nrow(result$h), fmrihrf::nbasis(fmrihrf::HRF_FIR))
   expect_equal(ncol(result$h), 1)  # Single voxel
   expect_equal(nrow(result$beta), 1)  # Single condition
   expect_equal(ncol(result$beta), 1)  # Single voxel

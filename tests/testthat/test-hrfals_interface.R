@@ -3,8 +3,8 @@ context("hrfals interface")
 library(fmrireg)
 
 test_that("hrfals forwards arguments to hrfals wrapper", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  design <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  design <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3)
 
   ctrl <- list(lambda_init = 0, lambda_b = 0.1, lambda_h = 0.1,
                fullXtX = TRUE, max_alt = 2)

@@ -2,7 +2,7 @@ simulate_simple_data <- function(ncond = 2,
                                  nreps = 12,
                                  TR = 1,
                                  snr = 1,
-                                 hrf = fmrireg::HRF_SPMG2,
+                                 hrf = fmrihrf::HRF_SPMG2,
                                  seed = 123) {
   # Custom simulation function to work around fmrireg bug
   set.seed(seed)

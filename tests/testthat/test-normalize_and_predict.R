@@ -29,7 +29,7 @@ test_that("predict.hrfals_fit returns negative residuals", {
                 predictor_means = 0, predictor_sds = 1)
   resids <- matrix(c(0.1, -0.2), 1, 2)
   fit <- hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-                    call("hrfals_fit"), fmrireg::HRF_SPMG1, "term",
+                    call("hrfals_fit"), fmrihrf::HRF_SPMG1, "term",
                     phi, dinfo, resids)
   expect_warning(pred <- predict(fit), "Fitted values computation")
   expect_equal(pred, -resids)

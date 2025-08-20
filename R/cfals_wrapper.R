@@ -171,7 +171,7 @@ fmrireg_cfals <- function(fmri_data_obj,
                                        h = lambda_h,
                                        joint = lambda_joint),
                            call = match.call(),
-                           fmrireg_hrf_basis_used = hrf_basis,
+                           fmrihrf_hrf_basis_used = hrf_basis,
                            design_info = list(d = design$d,
                                               k = design$k,
                                               n = n,
@@ -277,7 +277,7 @@ fmrireg_cfals <- function(fmri_data_obj,
 #' # Simulate data
 #' sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
 #' ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
-#' emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
+#' emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrihrf::HRF_SPMG3),
 #'                              data = ev_df, block = ~ block,
 #'                              sampling_frame = sframe)
 #' Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels

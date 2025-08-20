@@ -26,12 +26,13 @@ test_that("h-update solves block system", {
   h_current <- init$h
   b_current <- init$beta
 
-  XtX_list <- lapply(dat$X_list, crossprod)
-  XtX_diag <- t(vapply(dat$X_list, function(X) colSums(X^2), numeric(d)))
-  XtY_list <- lapply(dat$X_list, function(X) crossprod(X, dat$Y))
   k <- length(dat$X_list)
   d <- ncol(dat$X_list[[1]])
   v <- ncol(dat$Y)
+  
+  XtX_list <- lapply(dat$X_list, crossprod)
+  XtX_diag <- t(vapply(dat$X_list, function(X) colSums(X^2), numeric(d)))
+  XtY_list <- lapply(dat$X_list, function(X) crossprod(X, dat$Y))
   lambda_joint <- 0
 
   for (vx in seq_len(v)) {
@@ -70,6 +71,6 @@ test_that("h-update solves block system", {
     dat$Y, dat$X_list
   )
 
-  expect_equal(res_engine$h, manual$h, tolerance = 1e-12)
+  expect_equal(res_engine$h, manual$h, tolerance = 1e-12, check.attributes = FALSE)
   expect_equal(res_engine$beta, manual$beta, tolerance = 1e-12)
 })

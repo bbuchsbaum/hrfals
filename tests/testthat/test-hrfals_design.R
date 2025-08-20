@@ -14,8 +14,8 @@ test_that("hrfals_design replicates create_cfals_design", {
   emod <- event_model(onset ~ hrf(condition), data = events,
                       block = ~ block, sampling_frame = sf)
 
-  direct <- create_cfals_design(Y, emod, HRF_SPMG2)
-  wrap <- hrfals_design(events, TR = 1, basis = HRF_SPMG2,
+  direct <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG2)
+  wrap <- hrfals_design(events, TR = 1, basis = fmrihrf::HRF_SPMG2,
                         fmri_data_obj = Y)
 
   expect_equal(wrap$Y_proj, direct$Y_proj)
@@ -27,7 +27,7 @@ test_that("hrfals_design replicates create_cfals_design", {
 
 test_that("hrfals_design validates input", {
   events <- data.frame(onset = c(1, 2), condition = factor(c("A", "B")))
-  expect_error(hrfals_design(events, TR = 1, basis = HRF_SPMG2,
+  expect_error(hrfals_design(events, TR = 1, basis = fmrihrf::HRF_SPMG2,
                              fmri_data_obj = "bad"),
                "'fmri_data_obj' must be")
 })

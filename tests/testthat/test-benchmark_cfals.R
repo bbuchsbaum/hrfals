@@ -73,8 +73,8 @@ benchmark_cfals <- function() {
   G_neural <- Fc %*% B_true + Ft %*% Z_true
 
   # HRF shapes: two very different ones
-  hrf_A <- HRF_SPMG1              # canonical
-  hrf_B <- HRF_BSPLINE            # funky spline, same span
+  hrf_A <- fmrihrf::HRF_SPMG1              # canonical
+  hrf_B <- fmrihrf::HRF_BSPLINE            # funky spline, same span
   theta_vec <- rep(0, v)
   theta_vec[sample(v, 0.3 * v)] <- 1              # 0 ⇒ hrf_A, 1 ⇒ hrf_B
 
@@ -140,7 +140,7 @@ benchmark_cfals <- function() {
                 timegrid  = hrf_timegrid)  # Store the HRF time grid
 
   # ----- 3. Run hrfals and baselines -----
-  basis_cfals <- HRF_FIR                   # 12-basis FIR
+  basis_cfals <- fmrihrf::HRF_FIR                   # 12-basis FIR
   
   # Create proper event model for fmrireg
   sf <- sampling_frame(blocklens = length(bold_timegrid), TR = TR)
@@ -199,7 +199,7 @@ calculate_metrics <- function(result) {
     
     # The reconstructed_hrfs should be on the proper HRF time grid already
     # But we need to match it to our truth time grid for comparison
-    basis_cfals <- HRF_FIR
+    basis_cfals <- fmrihrf::HRF_FIR
     hrf_span <- attr(basis_cfals, "span")  # 24s
     
     # Create the time grid that reconstructed_hrfs corresponds to
@@ -323,7 +323,7 @@ visualize_hrf_performance <- function(result) {
     cf_hrf_recon_raw <- cf_fit$reconstructed_hrfs  # This is already Phi %*% h_coeffs
     
     # The reconstructed_hrfs should be on the proper HRF time grid already
-    basis_cfals <- HRF_FIR
+    basis_cfals <- fmrihrf::HRF_FIR
     hrf_span <- attr(basis_cfals, "span")  # 24s
     
     # Create the time grid that reconstructed_hrfs corresponds to

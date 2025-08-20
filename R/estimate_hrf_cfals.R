@@ -110,7 +110,7 @@ estimate_hrf_cfals <- function(fmri_data_obj,
     R_choice <- match.arg(R_mat, c("identity", "basis_default"))
     R_eff <- switch(R_choice,
                     identity = diag(d),
-                    basis_default = fmrireg::penalty_matrix(hrf_basis_for_cfals))
+                    basis_default = fmrihrf::penalty_matrix(hrf_basis_for_cfals))
   } else if (is.matrix(R_mat)) {
     if (nrow(R_mat) != d || ncol(R_mat) != d) {
       stop(paste("R_mat must be a", d, "x", d, "matrix"))

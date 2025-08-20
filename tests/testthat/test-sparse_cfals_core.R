@@ -19,10 +19,10 @@ simulate_sparse_predictor_data <- function(n = 40, d = 3, k = 5,
 
 
 test_that("l1 = 0 reproduces original results", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit_default <- hrfals(dat$Y, dat$event_model, HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  fit_default <- hrfals(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                         lam_beta = 0.1, lam_h = 0.1, max_alt = 1)
-  fit_explicit <- hrfals(dat$Y, dat$event_model, HRF_SPMG3,
+  fit_explicit <- hrfals(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                          lam_beta = 0.1, lam_h = 0.1, max_alt = 1,
                          beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE))
   expect_equal(fit_default$h_coeffs, fit_explicit$h_coeffs)
@@ -53,12 +53,12 @@ test_that("sparse beta step selects active predictors", {
 
 
 test_that("predictor standardization rescales betas", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit_raw <- hrfals(dat$Y, dat$event_model, HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  fit_raw <- hrfals(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                     lam_beta = 0.1, lam_h = 0.1, max_alt = 1,
                     design_control = list(standardize_predictors = FALSE,
                                           cache_design_blocks = TRUE))
-  fit_std <- hrfals(dat$Y, dat$event_model, HRF_SPMG3,
+  fit_std <- hrfals(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                     lam_beta = 0.1, lam_h = 0.1, max_alt = 1,
                     design_control = list(standardize_predictors = TRUE,
                                           cache_design_blocks = TRUE))

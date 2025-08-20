@@ -7,7 +7,7 @@ simulate_small_data <- function() {
   events <- data.frame(onset = c(5, 15), condition = factor(c("A", "B")), block = 1)
   emod <- event_model(onset ~ hrf(condition), data = events,
                       block = ~ block, sampling_frame = sf)
-  design <- create_fmri_design(emod, HRF_SPMG3)
+  design <- create_fmri_design(emod, fmrihrf::HRF_SPMG3)
   X_list <- design$X_list
   d <- design$d
   k <- design$k
@@ -28,7 +28,7 @@ simulate_small_data <- function() {
 
 test_that("tune_beta_l1_hrfals selects best penalty", {
   dat <- simulate_small_data()
-  res <- tune_beta_l1_hrfals(dat$Y, dat$emod, HRF_SPMG3,
+  res <- tune_beta_l1_hrfals(dat$Y, dat$emod, fmrihrf::HRF_SPMG3,
                              l1_grid = c(0, 0.01),
                              n_outer_iterations_cfals = 1,
                              other_hrfals_args = list(lam_beta = 0.1,

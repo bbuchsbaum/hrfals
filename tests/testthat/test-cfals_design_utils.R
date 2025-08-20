@@ -1,27 +1,28 @@
 context("cfals design helpers")
 
 library(fmrireg)
+library(fmrihrf)
 
 test_that("reconstruction_matrix works", {
   sf <- sampling_frame(10, TR = 1)
-  phi <- reconstruction_matrix(HRF_SPMG3, sf)
-  expect_equal(ncol(phi), nbasis(HRF_SPMG3))
+  phi <- reconstruction_matrix(fmrihrf::HRF_SPMG3, sf)
+  expect_equal(ncol(phi), nbasis(fmrihrf::HRF_SPMG3))
   expect_gt(nrow(phi), 1)
 })
 
-test_that("fmrireg penalty_matrix works", {
-  Rm <- fmrireg::penalty_matrix(HRF_SPMG3)
+test_that("fmrihrf penalty_matrix works", {
+  Rm <- fmrihrf::penalty_matrix(fmrihrf::HRF_SPMG3)
   expect_true(is.matrix(Rm))
-  expect_equal(dim(Rm), c(nbasis(HRF_SPMG3), nbasis(HRF_SPMG3)))
+  expect_equal(dim(Rm), c(nbasis(fmrihrf::HRF_SPMG3), nbasis(fmrihrf::HRF_SPMG3)))
   expect_true(isSymmetric(Rm))
 })
 
 test_that("convolve_timeseries_with_single_basis behaves like impulse response", {
   sf <- sampling_frame(10, TR = 1)
   raw_ts <- c(1, rep(0, 9))
-  conv <- convolve_timeseries_with_single_basis(raw_ts, HRF_SPMG3, 2, sf)
-  grid <- seq(0, attr(HRF_SPMG3, "span"), by = sf$TR[1])
-  phi <- evaluate(HRF_SPMG3, grid)
+  conv <- convolve_timeseries_with_single_basis(raw_ts, fmrihrf::HRF_SPMG3, 2, sf)
+  grid <- seq(0, attr(fmrihrf::HRF_SPMG3, "span"), by = sf$TR[1])
+  phi <- evaluate(fmrihrf::HRF_SPMG3, grid)
   if (is.vector(phi)) phi <- matrix(phi, ncol = 1L)
   expect_equal(conv, phi[seq_along(raw_ts), 2])
 })
@@ -42,10 +43,10 @@ test_that("create_fmri_design returns expected structure", {
                        block = 1)
   emod <- event_model(onset ~ hrf(condition), data = events,
                       block = ~ block, sampling_frame = sf)
-  des <- create_fmri_design(emod, HRF_SPMG3)
+  des <- create_fmri_design(emod, fmrihrf::HRF_SPMG3)
   expect_type(des, "list")
   expect_equal(length(des$X_list), 2)
-  expect_equal(des$d, nbasis(HRF_SPMG3))
+  expect_equal(des$d, nbasis(fmrihrf::HRF_SPMG3))
   expect_equal(des$k, length(des$X_list))
   expect_true(is.matrix(des$Phi))
   expect_true(is.numeric(des$h_ref_shape_norm))
@@ -63,12 +64,12 @@ test_that("create_cfals_design returns expected structure", {
   Y <- matrix(rnorm(20 * 2), 20, 2)
   Z <- matrix(rnorm(20), ncol = 1)
   
-  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z,
+  res <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG3, Z,
                             hrf_shape_duration_sec = 16,
                             hrf_shape_sample_res_sec = 1)
   
   expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG3))
+  expect_equal(res$d_basis_dim, nbasis(fmrihrf::HRF_SPMG3))
   expect_equal(res$k_conditions, 2)
   expect_equal(res$n_timepoints, 20)
   expect_equal(res$v_voxels, 2)
@@ -97,7 +98,7 @@ test_that("create_cfals_design zeroes NA rows", {
   Y <- matrix(rnorm(10 * 1), 10, 1)
   Y[3, ] <- NA
 
-  res <- create_cfals_design(Y, emod, HRF_SPMG3)
+  res <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG3)
   
   expect_equal(res$bad_row_idx, 3)
   expect_true(all(res$Y_proj[3, ] == 0))
@@ -117,7 +118,7 @@ test_that("create_cfals_design zeroes NA rows with confounds", {
   Y[4, ] <- NA
   Z <- matrix(rnorm(10), ncol = 1)
 
-  res <- create_cfals_design(Y, emod, HRF_SPMG3, Z)
+  res <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG3, Z)
 
   expect_equal(res$bad_row_idx, 4)
   expect_true(all(res$Y_proj[4, ] == 0))
@@ -135,10 +136,10 @@ test_that("create_cfals_design works without confounds", {
                       block = ~ block, sampling_frame = sf)
   Y <- matrix(rnorm(15 * 3), 15, 3)
   
-  res <- create_cfals_design(Y, emod, HRF_SPMG2)
+  res <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG2)
   
   expect_type(res, "list")
-  expect_equal(res$d_basis_dim, nbasis(HRF_SPMG2))
+  expect_equal(res$d_basis_dim, nbasis(fmrihrf::HRF_SPMG2))
   expect_equal(res$k_conditions, 2)
   expect_equal(res$n_timepoints, 15)
   expect_equal(res$v_voxels, 3)

@@ -21,14 +21,14 @@ test_that("cfals wrappers work with simulated dataset", {
   emod <- event_model(onset ~ hrf(condition), data = events,
                       block = ~ block, sampling_frame = sframe)
 
-  nb <- nbasis(fmrireg::HRF_SPMG2)
+  nb <- nbasis(fmrihrf::HRF_SPMG2)
   nvox <- ncol(Y)
   k <- length(unique(events$condition))
 
-  fit2 <- hrfals(Y, emod, fmrireg::HRF_SPMG2,
+  fit2 <- hrfals(Y, emod, fmrihrf::HRF_SPMG2,
                  lam_beta = 0, lam_h = 0)
   fit3 <- estimate_hrf_cfals(Y, emod, "hrf(condition)",
-                             fmrireg::HRF_SPMG2,
+                             fmrihrf::HRF_SPMG2,
                              lambda_b = 0, lambda_h = 0)
 
   expect_equal(dim(fit2$h_coeffs), c(nb, nvox))

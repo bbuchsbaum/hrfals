@@ -13,7 +13,7 @@ test_that("Method comparison with optimized parameters shows expected performanc
   n_timepoints <- 120  # Longer for better estimation
   timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
   
-  hrf_shape <- fmrireg::HRF_SPMG1
+  hrf_shape <- fmrihrf::HRF_SPMG1
   amplitude1 <- 3.0   # More moderate amplitude difference
   amplitude2 <- 1.0
   true_ratio <- amplitude1 / amplitude2
@@ -62,8 +62,8 @@ test_that("Method comparison with optimized parameters shows expected performanc
       Y_noisy <- Y_combined + rnorm(n_timepoints, 0, noise_level * sd(Y_combined))
       
       # Create design matrices
-      hrf_basis <- fmrireg::HRF_FIR
-      d <- fmrireg::nbasis(hrf_basis)
+      hrf_basis <- fmrihrf::HRF_FIR
+      d <- fmrihrf::nbasis(hrf_basis)
       
       neural_signal1 <- rep(0, n_timepoints)
       neural_signal2 <- rep(0, n_timepoints)
@@ -94,7 +94,7 @@ test_that("Method comparison with optimized parameters shows expected performanc
       
       # Setup reconstruction
       Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-      h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+      h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
       if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
       h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
       
@@ -220,7 +220,7 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   n_timepoints <- 100
   timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
   
-  hrf_shape <- fmrireg::HRF_SPMG1
+  hrf_shape <- fmrihrf::HRF_SPMG1
   amplitude1 <- 2.5
   amplitude2 <- 1.0
   true_ratio <- amplitude1 / amplitude2
@@ -243,8 +243,8 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   Y_noisy <- Y_combined + rnorm(n_timepoints, 0, 0.1 * sd(Y_combined))
   
   # Create design matrices
-  hrf_basis <- fmrireg::HRF_FIR
-  d <- fmrireg::nbasis(hrf_basis)
+  hrf_basis <- fmrihrf::HRF_FIR
+  d <- fmrihrf::nbasis(hrf_basis)
   
   neural_signal1 <- rep(0, n_timepoints)
   neural_signal2 <- rep(0, n_timepoints)
@@ -274,7 +274,7 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   }
   
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   

@@ -13,10 +13,10 @@ test_that("baseline_model is projected with confounds", {
   Z <- matrix(rnorm(10), ncol = 1)
   bmod <- baseline_model(sframe = sf, degree = 1)
 
-  res1 <- create_cfals_design(Y, emod, HRF_SPMG2,
+  res1 <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG2,
                               confound_obj = Z,
                               baseline_model = bmod)
-  res2 <- create_cfals_design(Y, emod, HRF_SPMG2,
+  res2 <- create_cfals_design(Y, emod, fmrihrf::HRF_SPMG2,
                               confound_obj = cbind(Z, design_matrix(bmod)))
 
   expect_equal(res1$Y_proj, res2$Y_proj)

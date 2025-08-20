@@ -38,7 +38,7 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   Y2_noisy <- Y2_clean + rnorm(n_timepoints, 0, noise_level * sd(Y2_clean))
   
   # Create design matrix using FIR basis
-  hrf_basis <- fmrireg::HRF_FIR
+  hrf_basis <- fmrihrf::HRF_FIR
   d <- fmrireg::nbasis(hrf_basis)
   
   # Build design matrix for single condition
@@ -56,7 +56,7 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   

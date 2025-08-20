@@ -9,7 +9,7 @@ make_hrfals_fit <- function() {
   dinfo <- list(d = 2, k = 1, n = 2, v = 2,
                 predictor_means = 0, predictor_sds = 1)
   hrfals_fit(h, beta, "cf_als", c(beta = 1, h = 1),
-             call("hrfals_fit"), fmrireg::HRF_SPMG1, "term",
+             call("hrfals_fit"), fmrihrf::HRF_SPMG1, "term",
              phi, dinfo, matrix(0, 1, 1),
              beta_penalty = list(l1 = 0.1, alpha = 1, warm_start = TRUE))
 }

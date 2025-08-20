@@ -36,11 +36,11 @@ simulate_cfals_wrapper_data <- function(hrf_basis, noise_sd = 0.05, signal_scale
 
 
 test_that("estimate_hrf_cfals returns expected dimensions", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                             lambda_b = 0.1, lambda_h = 0.1)
   expect_s3_class(fit, "hrfals_fit")
-  expect_equal(dim(fit$h_coeffs), c(nbasis(HRF_SPMG3), ncol(dat$Y)))
+  expect_equal(dim(fit$h_coeffs), c(nbasis(fmrihrf::HRF_SPMG3), ncol(dat$Y)))
   expect_equal(dim(fit$beta_amps), c(2, ncol(dat$Y)))
   expect_equal(rownames(fit$beta_amps), c("conditionA", "conditionB"))
   expect_equal(fit$target_event_term_name, "hrf(condition)")
@@ -48,17 +48,17 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
 })
 
 test_that("estimate_hrf_cfals carries bad_row_idx", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   dat$Y[4, 1] <- NA
-  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+  fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                             lambda_b = 0.1, lambda_h = 0.1)
   expect_equal(fit$bad_row_idx, 4)
 })
 
 
 test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
   direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
@@ -68,7 +68,7 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = diag(prep$d_basis_dim))
-  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,
                              lambda_b = 0.1,
@@ -84,9 +84,9 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
 
 test_that("estimate_hrf_cfals predictions match canonical GLM", {
   set.seed(123)
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
-                            HRF_SPMG3,
+                            fmrihrf::HRF_SPMG3,
                             method = "cf_als",
                             lambda_b = 0,
                             lambda_h = 0,
@@ -127,9 +127,9 @@ test_that("CF-ALS and GLM converge with low noise", {
   set.seed(123)
   
   # Test 1: No noise case - should be closer than noisy cases
-  dat_no_noise <- simulate_cfals_wrapper_data(HRF_SPMG3, noise_sd = 0.0)
+  dat_no_noise <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3, noise_sd = 0.0)
   fit_no_noise <- estimate_hrf_cfals(dat_no_noise$Y, dat_no_noise$event_model, "hrf(condition)",
-                                     HRF_SPMG3,
+                                     fmrihrf::HRF_SPMG3,
                                      method = "cf_als",
                                      lambda_b = 0,
                                      lambda_h = 0,
@@ -158,10 +158,10 @@ test_that("CF-ALS and GLM converge with low noise", {
                    
 test_that("R_mat = 'basis_default' uses basis penalty matrix", {
 
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
-  Rb <- fmrireg::penalty_matrix(HRF_SPMG3)
+  Rb <- fmrihrf::penalty_matrix(fmrihrf::HRF_SPMG3)
   direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
@@ -170,7 +170,7 @@ test_that("R_mat = 'basis_default' uses basis penalty matrix", {
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = Rb)
-  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,
                              lambda_b = 0.1,
@@ -183,8 +183,8 @@ test_that("R_mat = 'basis_default' uses basis penalty matrix", {
 })
 
 test_that("R_mat custom matrix is used", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
-  prep <- create_cfals_design(dat$Y, dat$event_model, HRF_SPMG3,
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
+  prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
   R_custom <- diag(prep$d_basis_dim) * 2
   direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
@@ -195,7 +195,7 @@ test_that("R_mat custom matrix is used", {
                                Phi_recon_matrix = prep$Phi_recon_matrix,
                                h_ref_shape_canonical = prep$h_ref_shape_canonical,
                                R_mat = R_custom)
-  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+  wrap <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                              method = "ls_svd_1als",
                              lambda_init = 0,
                              lambda_b = 0.1,
@@ -243,7 +243,7 @@ simulate_multiterm_data <- function(hrf_basis, noise_sd = 0.05) {
 
 
 test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
-  bases <- list(HRF_SPMG3, gen_hrf(hrf_bspline, N=4))
+  bases <- list(fmrihrf::HRF_SPMG3, gen_hrf(hrf_bspline, N=4))
   for (b in bases) {
     dat <- simulate_multiterm_data(b)
     for (term in c("hrf(term1)", "hrf(term2)")) {
@@ -257,23 +257,23 @@ test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
 })
 
 test_that("R_mat options work", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
 
   fit_basis <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
-                                  HRF_SPMG3,
+                                  fmrihrf::HRF_SPMG3,
                                   lambda_b = 0.1, lambda_h = 0.1,
                                   R_mat = "basis_default")
   expect_s3_class(fit_basis, "hrfals_fit")
 
-  Rm <- diag(nbasis(HRF_SPMG3))
+  Rm <- diag(nbasis(fmrihrf::HRF_SPMG3))
   fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
-                                   HRF_SPMG3,
+                                   fmrihrf::HRF_SPMG3,
                                    lambda_b = 0.1, lambda_h = 0.1,
                                    R_mat = Rm)
   expect_s3_class(fit_custom, "hrfals_fit")
 
   expect_error(
-    estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", HRF_SPMG3,
+    estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                        lambda_b = 0.1, lambda_h = 0.1,
                        R_mat = NA),
     "R_mat must be 'identity', 'basis_default', or a numeric matrix"
@@ -281,11 +281,11 @@ test_that("R_mat options work", {
 })
 
 test_that("estimate_hrf_spatial_cfals forwards arguments", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   mask <- array(1, dim = c(2, 1, 1))
   lap_obj <- build_voxel_laplacian(mask)
   fit <- estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
-                                    "hrf(condition)", HRF_SPMG3,
+                                    "hrf(condition)", fmrihrf::HRF_SPMG3,
                                     laplacian_obj = lap_obj,
                                     lambda_s_default = 0.05,
                                     h_solver = "direct",
@@ -294,12 +294,12 @@ test_that("estimate_hrf_spatial_cfals forwards arguments", {
 })
 
 test_that("estimate_hrf_spatial_cfals default lambda handling", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   mask <- array(1, dim = c(2, 1, 1))
   lap_obj <- build_voxel_laplacian(mask)
 
   fit_base <- estimate_hrf_cfals(dat$Y, dat$event_model,
-                                 "hrf(condition)", HRF_SPMG3,
+                                 "hrf(condition)", fmrihrf::HRF_SPMG3,
                                  laplacian_obj = lap_obj,
                                  lambda_s = 0.05,
                                  h_solver = "direct",
@@ -308,7 +308,7 @@ test_that("estimate_hrf_spatial_cfals default lambda handling", {
                                  max_alt = 1)
 
   fit_wrap <- estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
-                                         "hrf(condition)", HRF_SPMG3,
+                                         "hrf(condition)", fmrihrf::HRF_SPMG3,
                                          laplacian_obj = lap_obj,
                                          lambda_s_default = 0.05,
                                          h_solver = "direct",
@@ -322,10 +322,10 @@ test_that("estimate_hrf_spatial_cfals default lambda handling", {
 })
 
 test_that("estimate_hrf_spatial_cfals requires laplacian_obj", {
-  dat <- simulate_cfals_wrapper_data(HRF_SPMG3)
+  dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   expect_error(
     estimate_hrf_spatial_cfals(dat$Y, dat$event_model,
-                               "hrf(condition)", HRF_SPMG3,
+                               "hrf(condition)", fmrihrf::HRF_SPMG3,
                                lambda_s_default = 0.05),
     "laplacian_obj with elements L and degree must be provided"
   )

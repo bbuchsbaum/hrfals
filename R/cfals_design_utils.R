@@ -26,7 +26,7 @@ reconstruction_matrix.HRF <- function(hrf, sframe) {
   } else {
     as.numeric(sframe)
   }
-  vals <- evaluate(hrf, grid)
+  vals <- fmrihrf::evaluate(hrf, grid)
   if (is.vector(vals)) matrix(vals, ncol = 1L) else as.matrix(vals)
 }
 
@@ -52,7 +52,7 @@ convolve_timeseries_with_single_basis <- function(ts, hrf_basis,
   if (!inherits(hrf_basis, "HRF")) {
     stop("'hrf_basis' must be an object of class 'HRF'")
   }
-  nb <- fmrireg::nbasis(hrf_basis)
+  nb <- fmrihrf::nbasis(hrf_basis)
   if (basis_index < 1 || basis_index > nb) {
     stop("'basis_index' out of range")
   }
@@ -62,7 +62,7 @@ convolve_timeseries_with_single_basis <- function(ts, hrf_basis,
   } else {
     as.numeric(sframe)
   }
-  vals <- fmrireg::evaluate(hrf_basis, grid)
+  vals <- fmrihrf::evaluate(hrf_basis, grid)
   if (is.vector(vals)) vals <- matrix(vals, ncol = 1L)
   phi_j <- vals[, basis_index]
 
@@ -104,7 +104,7 @@ project_confounds <- function(Y, X_list, confounds = NULL, lapack_qr = FALSE) {
 #' well as a reconstruction matrix for converting HRF coefficients to
 #' sampled shapes and a normalised reference HRF vector for sign
 #' alignment. The reference HRF is generated using
-#' `fmrireg::HRF_SPMG1` and sampled on the same grid as `Phi`.
+#' `fmrihrf::HRF_SPMG1` and sampled on the same grid as `Phi`.
 #'
 #' @param event_model An object of class `event_model`.
 #' @param hrf_basis An `HRF` basis object.
@@ -120,7 +120,7 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   sframe <- event_model$sampling_frame
-  d <- fmrireg::nbasis(hrf_basis)
+  d <- fmrihrf::nbasis(hrf_basis)
   
   # Use the existing design matrix from the event model
   # The issue is that the event model was created with a default HRF basis
@@ -175,7 +175,7 @@ create_fmri_design <- function(event_model, hrf_basis) {
 
   Phi <- reconstruction_matrix(hrf_basis, sframe)
   time_points <- seq(0, attr(hrf_basis, "span"), by = sframe$TR[1])
-  h_ref <- fmrireg::evaluate(fmrireg::HRF_SPMG1, time_points)
+  h_ref <- fmrihrf::evaluate(fmrihrf::HRF_SPMG1, time_points)
   h_ref <- drop(h_ref)
   h_ref <- h_ref / max(abs(h_ref))
   if (length(h_ref) != nrow(Phi)) {
@@ -183,7 +183,7 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   list(X_list = X_list,
-       d = fmrireg::nbasis(hrf_basis),
+       d = fmrihrf::nbasis(hrf_basis),
        k = length(X_list),
        Phi = Phi,
        h_ref_shape_norm = h_ref)

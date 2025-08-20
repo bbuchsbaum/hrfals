@@ -16,7 +16,7 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
   
   # Same HRF shape for both conditions (this is key for ls_svd_engine)
-  hrf_shape <- fmrireg::HRF_SPMG1
+  hrf_shape <- fmrihrf::HRF_SPMG1
   
   # Define different amplitudes for each condition
   amplitude1 <- 2.5   # Condition 1: high amplitude
@@ -46,8 +46,8 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   Y_noisy <- Y_combined_clean + rnorm(n_timepoints, 0, noise_level * sd(Y_combined_clean))
   
   # Create design matrices using FIR basis
-  hrf_basis <- fmrireg::HRF_FIR
-  d <- fmrireg::nbasis(hrf_basis)
+  hrf_basis <- fmrihrf::HRF_FIR
+  d <- fmrihrf::nbasis(hrf_basis)
   
   # Create neural signals (stick functions) for each condition
   neural_signal1 <- rep(0, n_timepoints)
@@ -80,7 +80,7 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
@@ -182,7 +182,7 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
   
   # Same HRF shape for both conditions
-  hrf_shape <- fmrireg::HRF_SPMG1
+  hrf_shape <- fmrihrf::HRF_SPMG1
   
   # Different amplitudes
   amplitude1 <- 3.0
@@ -208,8 +208,8 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   Y_noisy <- Y_combined + rnorm(n_timepoints, 0, 0.05 * sd(Y_combined))
   
   # Create design matrices (same as before)
-  hrf_basis <- fmrireg::HRF_FIR
-  d <- fmrireg::nbasis(hrf_basis)
+  hrf_basis <- fmrihrf::HRF_FIR
+  d <- fmrihrf::nbasis(hrf_basis)
   
   neural_signal1 <- rep(0, n_timepoints)
   neural_signal2 <- rep(0, n_timepoints)
@@ -239,7 +239,7 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   }
   
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
