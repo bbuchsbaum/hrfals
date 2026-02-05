@@ -22,5 +22,5 @@ metadata such as the number of basis functions and conditions as
 well as a reconstruction matrix for converting HRF coefficients to
 sampled shapes and a normalised reference HRF vector for sign
 alignment. The reference HRF is generated using
-`fmrireg::HRF_SPMG1` and sampled on the same grid as `Phi`.
+`fmrihrf::HRF_SPMG1` and sampled on the same grid as `Phi`.
 }

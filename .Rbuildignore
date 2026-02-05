@@ -1,0 +1,9 @@
+^[.]git($|/)
+^[.]gitignore$
+^[.]claude($|/)
+^[.]Rproj[.]user($|/)
+^[.][.]Rcheck($|/)
+^docs($|/)
+^benchmark_plots($|/)
+^raw-data($|/)
+^repomix[.].*$

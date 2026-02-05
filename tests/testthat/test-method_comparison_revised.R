@@ -1,5 +1,5 @@
 library(testthat)
-library(fmrireg)
+library(fmridesign)
 
 context("Revised Method Comparison: Optimized Parameters")
 
@@ -47,14 +47,14 @@ test_that("Method comparison with optimized parameters shows expected performanc
       onsets_cond2 <- onsets_cond2[c(TRUE, diff(onsets_cond2) > 8)]
       
       # Create regressors
-      reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+      reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                                 amplitude = amplitude1, duration = 0)
-      reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+      reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                                 amplitude = amplitude2, duration = 0)
       
       # Generate signals
-      Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-      Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+      Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+      Y2_clean <- fmridesign::evaluate(reg2, timegrid)
       if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
       if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
       
@@ -80,7 +80,7 @@ test_that("Method comparison with optimized parameters shows expected performanc
       
       X_design1 <- matrix(0, n_timepoints, d)
       X_design2 <- matrix(0, n_timepoints, d)
-      basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+      basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
       
       for (j in seq_len(d)) {
         if (is.matrix(basis_vals)) {
@@ -94,7 +94,7 @@ test_that("Method comparison with optimized parameters shows expected performanc
       
       # Setup reconstruction
       Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-      h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+      h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
       if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
       h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
       
@@ -229,13 +229,13 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   onsets_cond1 <- c(10, 35, 60, 85, 110, 135, 160)
   onsets_cond2 <- c(20, 45, 70, 95, 120, 145, 170)
   
-  reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+  reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                             amplitude = amplitude1, duration = 0)
-  reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+  reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                             amplitude = amplitude2, duration = 0)
   
-  Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-  Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+  Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+  Y2_clean <- fmridesign::evaluate(reg2, timegrid)
   if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
   if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
   
@@ -261,7 +261,7 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   
   X_design1 <- matrix(0, n_timepoints, d)
   X_design2 <- matrix(0, n_timepoints, d)
-  basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+  basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
   
   for (j in seq_len(d)) {
     if (is.matrix(basis_vals)) {
@@ -274,7 +274,7 @@ test_that("CF-ALS shows expected convergence behavior with appropriate parameter
   }
   
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   

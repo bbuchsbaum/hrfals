@@ -26,7 +26,7 @@ assumed.}
 \item{basis}{An `HRF` basis object.}
 
 \item{fmri_data_obj}{BOLD data matrix (time points \eqn{\times} voxels) or
-`fmrireg::fmri_dataset`.}
+`fmridesign::fmri_dataset`.}
 
 \item{confound_obj}{Optional confound matrix with the same number of rows as
 `fmri_data_obj`.}
@@ -34,19 +34,19 @@ assumed.}
 \item{baseline_model}{Optional baseline model whose design matrix is
 projected alongside `confound_obj`.}
 
-\item{formula}{Model formula passed to [fmrireg::event_model()]. The default
+\item{formula}{Model formula passed to [fmridesign::event_model()]. The default
 expects a column named `condition` in `events`.}
 
 \item{block}{Formula specifying the block column. Defaults to `~ block` if a
 `block` column is present.}
 
-\item{...}{Additional arguments passed to [fmrireg::event_model()].}
+\item{...}{Additional arguments passed to [fmridesign::event_model()].}
 }
 \value{
 A list as returned by [create_cfals_design()].
 }
 \description{
-Convenience wrapper that first constructs an `fmrireg::event_model` from a
+Convenience wrapper that first constructs an `fmridesign::event_model` from a
 data.frame of events and then calls [create_cfals_design()] to generate
 the matrices required for CFALS estimation.
 }

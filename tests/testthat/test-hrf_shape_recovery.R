@@ -1,5 +1,5 @@
 library(testthat)
-library(fmrireg)
+library(fmridesign)
 
 context("HRF Shape Recovery")
 
@@ -28,7 +28,7 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
   }
   
   # Evaluate true HRF on the time grid
-  true_hrf_vals <- fmrireg::evaluate(true_hrf_func, timegrid)
+  true_hrf_vals <- fmridesign::evaluate(true_hrf_func, timegrid)
   if (is.matrix(true_hrf_vals)) true_hrf_vals <- true_hrf_vals[, 1]
   
   # Convolve neural signal with true HRF to get clean BOLD signal
@@ -47,7 +47,7 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
   # For each basis function, convolve neural signal
   for (j in seq_len(d)) {
     # Get j-th basis function values
-    basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+    basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
     if (is.matrix(basis_vals)) {
       basis_j <- basis_vals[, j]
     } else {
@@ -60,7 +60,7 @@ generate_hrf_recovery_data <- function(true_hrf_func, noise_level = 0.1) {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
@@ -80,7 +80,7 @@ test_that("ls_svd_engine recovers canonical HRF shape better than alternative", 
   data_canonical <- generate_hrf_recovery_data(fmrihrf::HRF_SPMG1, noise_level = 0.05)
   
   # Run ls_svd_engine
-  result_canonical <- ls_svd_engine(
+  result_canonical <- hrfals:::ls_svd_engine(
     X_list_proj = data_canonical$X_list,
     Y_proj = data_canonical$Y,
     lambda_init = 1,
@@ -94,10 +94,10 @@ test_that("ls_svd_engine recovers canonical HRF shape better than alternative", 
   estimated_hrf_canonical <- data_canonical$Phi_recon %*% result_canonical$h[, 1]
   
   # Test 2: Generate data with Gaussian HRF (different shape)
-  data_gaussian <- generate_hrf_recovery_data(fmrireg::HRF_GAUSSIAN, noise_level = 0.05)
+  data_gaussian <- generate_hrf_recovery_data(fmrihrf::HRF_GAUSSIAN, noise_level = 0.05)
   
   # Run ls_svd_engine on Gaussian data
-  result_gaussian <- ls_svd_engine(
+  result_gaussian <- hrfals:::ls_svd_engine(
     X_list_proj = data_gaussian$X_list,
     Y_proj = data_gaussian$Y,
     lambda_init = 1,
@@ -135,7 +135,7 @@ test_that("ls_svd_engine produces reasonable HRF estimates", {
   data <- generate_hrf_recovery_data(fmrihrf::HRF_SPMG1, noise_level = 0.1)
   
   # Run ls_svd_engine
-  result <- ls_svd_engine(
+  result <- hrfals:::ls_svd_engine(
     X_list_proj = data$X_list,
     Y_proj = data$Y,
     lambda_init = 1,

@@ -1,0 +1,121 @@
+---
+title: "Introduction to hrfals"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to hrfals}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(123)
+```
+
+The `hrfals` package implements Confound-Adjusted Alternating Least Squares
+(CF-ALS) for estimating hemodynamic response functions (HRFs) and
+condition amplitudes from fMRI time series. It integrates tightly with
+the `fmridesign` ecosystem for constructing event models and HRF bases.
+
+This short vignette walks through a minimal end-to-end example.
+
+## Key ideas
+
+- Confound-adjusted: projects out nuisance variation before HRF estimation.
+- Alternating least squares: alternates between HRF coefficients and
+  condition amplitude updates with regularization.
+- Flexible bases: works with any HRF basis from `fmrihrf` (e.g., FIR,
+  SPMG, FLOBS).
+
+## Installation
+
+Install from GitHub (requires `remotes`):
+
+```r
+# install.packages("remotes")
+remotes::install_github("bbuchsbaum/hrfals")
+```
+
+The package also relies on `fmridesign` and `fmrihrf` which will be pulled
+in automatically.
+
+## Minimal workflow
+
+1. Define a sampling frame and event model with `fmridesign`.
+2. Choose an HRF basis from `fmrihrf`.
+3. Fit with `hrfals()` (or `hrfals_sparse()` for L1-penalized betas).
+
+```{r message=FALSE}
+library(hrfals)
+library(fmridesign)
+
+# 1) Sampling frame and simple event model
+TR <- 1
+n_time <- 80
+sf <- sampling_frame(blocklens = n_time, TR = TR)
+
+events <- data.frame(
+  onset = c(5, 20, 40, 60),
+  condition = factor(c("A", "A", "B", "B")),
+  block = 1
+)
+
+emod <- event_model(onset ~ hrf(condition), data = events,
+                    block = ~ block, sampling_frame = sf)
+
+# 2) Choose an HRF basis
+hrf_basis <- fmrihrf::HRF_SPMG3
+
+# 3) Simulate a small BOLD matrix (time x voxels)
+Y <- matrix(rnorm(n_time * 5, sd = 0.2), n_time, 5)
+
+# Fit CF-ALS
+fit <- hrfals(Y, emod, hrf_basis,
+              lam_beta = 10,   # beta ridge
+              lam_h = 1,       # HRF ridge
+              max_alt = 1)     # number of ALS alternations
+
+fit
+```
+
+The returned object is of class `hrfals_fit` with fields including HRF
+coefficients (`h_coeffs`), condition amplitudes (`beta_amps`), a
+reconstructed HRF (`recon_hrf`), and goodness-of-fit (`gof`).
+
+## Inspecting results
+
+```{r}
+str(list(
+  h_dim = dim(fit$h_coeffs),
+  beta_dim = dim(fit$beta_amps),
+  gof_summary = summary(as.numeric(fit$gof))
+))
+```
+
+If you want sparse condition amplitudes (useful when many conditions or
+predictors are present), use `hrfals_sparse()` which applies an L1
+penalty to `beta` by default:
+
+```{r}
+fit_sparse <- hrfals_sparse(Y, emod, hrf_basis, max_alt = 1)
+str(dim(fit_sparse$beta_amps))
+```
+
+## Tips
+
+- Start with small `max_alt` (e.g., 1–2) and moderate ridge penalties
+  (`lam_beta`, `lam_h`), then tune.
+- Use FIR bases for flexible shapes; use canonical bases for stability
+  and interpretability.
+- Provide confounds via `confound_obj` and a baseline model via
+  `baseline_model` for real data to improve robustness.
+
+## Learn more
+
+- Build projected designs and inspect metadata: `vignette("design_and_confounds", package = "hrfals")`.
+- Derive trial-wise beta series after fitting CF-ALS: `vignette("trialwise_beta_series", package = "hrfals")`.
+- Tune sparse penalties for large predictor sets: `vignette("tuning_sparse_penalty", package = "hrfals")`.
+- See `vignette("many_continuous_predictors", package = "hrfals")` for a
+  sparse CF-ALS example with many predictors.
+- Explore function docs: `?hrfals`, `?hrfals_sparse`,
+  `?estimate_hrf_cfals`.

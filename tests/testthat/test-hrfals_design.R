@@ -1,6 +1,6 @@
 context("hrfals_design wrapper")
 
-library(fmrireg)
+library(fmridesign)
 
 # hrfals_design should match create_cfals_design when given the same inputs
 

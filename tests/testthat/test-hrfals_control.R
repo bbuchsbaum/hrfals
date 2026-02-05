@@ -1,6 +1,6 @@
 context("hrfals control utilities")
 
-library(fmrireg)
+library(fmridesign)
 
 # ensure default control list has expected names
 
@@ -33,5 +33,5 @@ test_that("hrfals_from_design checks required design components", {
   dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   bad_design <- list(event_model = dat$event_model)
   expect_error(hrfals_from_design(dat$Y, bad_design),
-               "'design' must contain 'event_model' and 'hrf_basis'")
+               "'design' must contain the following components:")
 })

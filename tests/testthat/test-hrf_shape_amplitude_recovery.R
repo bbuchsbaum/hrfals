@@ -1,5 +1,5 @@
 library(testthat)
-library(fmrireg)
+library(fmridesign)
 
 context("HRF Shape and Amplitude Recovery")
 
@@ -27,14 +27,14 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   onsets_cond2 <- c(20, 50, 80, 110)   # Condition 2 events (in seconds)
   
   # Create regressors with same HRF shape but different amplitudes
-  reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+  reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                             amplitude = amplitude1, duration = 0)
-  reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+  reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                             amplitude = amplitude2, duration = 0)
   
   # Generate clean BOLD signals using evaluate (this handles convolution automatically)
-  Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-  Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+  Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+  Y2_clean <- fmridesign::evaluate(reg2, timegrid)
   if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
   if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
   
@@ -66,7 +66,7 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   # Build design matrices for both conditions
   X_design1 <- matrix(0, n_timepoints, d)
   X_design2 <- matrix(0, n_timepoints, d)
-  basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+  basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
   
   for (j in seq_len(d)) {
     if (is.matrix(basis_vals)) {
@@ -80,7 +80,7 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
@@ -111,7 +111,7 @@ test_that("ls_svd_engine recovers HRF shape and amplitude with same shape", {
   # Reconstruct estimated HRF shapes for both methods
   estimated_hrf_svd <- Phi_recon %*% result_svd$h[, 1]
   estimated_hrf_als <- Phi_recon %*% result_als$h[, 1]
-  true_hrf <- fmrireg::evaluate(hrf_shape, timegrid)
+  true_hrf <- fmridesign::evaluate(hrf_shape, timegrid)
   if (is.matrix(true_hrf)) true_hrf <- true_hrf[, 1]
   
   # Normalize for fair comparison
@@ -193,14 +193,14 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   onsets_cond2 <- c(20, 50, 80)
   
   # Create regressors
-  reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+  reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                             amplitude = amplitude1, duration = 0)
-  reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+  reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                             amplitude = amplitude2, duration = 0)
   
   # Generate signals
-  Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-  Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+  Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+  Y2_clean <- fmridesign::evaluate(reg2, timegrid)
   if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
   if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
   
@@ -226,7 +226,7 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   
   X_design1 <- matrix(0, n_timepoints, d)
   X_design2 <- matrix(0, n_timepoints, d)
-  basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+  basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
   
   for (j in seq_len(d)) {
     if (is.matrix(basis_vals)) {
@@ -239,7 +239,7 @@ test_that("ls_svd_engine handles amplitude differences with same HRF shape", {
   }
   
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   

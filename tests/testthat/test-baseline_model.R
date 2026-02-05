@@ -1,6 +1,6 @@
 context("baseline_model handling")
 
-library(fmrireg)
+library(fmridesign)
 
 test_that("baseline_model is projected with confounds", {
   sf <- sampling_frame(10, TR = 1)

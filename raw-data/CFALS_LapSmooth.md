@@ -8,7 +8,7 @@ Okay, this is very helpful "meta-review" guidance. I'll incorporate these final 
 
 (Retain from previous version)
 
-The Confound-Free Alternating Least Squares (CF-ALS) method, as implemented in the `hrfals` package, provides a robust approach for data-driven estimation of Hemodynamic Response Functions (HRFs) from fMRI data. It estimates HRF basis coefficients (`H`) and condition-specific amplitudes (`B`) by iteratively solving regularized least-squares problems.
+The Confound-Adjusted Alternating Least Squares (CF-ALS) method, as implemented in the `hrfals` package, provides a robust approach for data-driven estimation of Hemodynamic Response Functions (HRFs) from fMRI data. It estimates HRF basis coefficients (`H`) and condition-specific amplitudes (`B`) by iteratively solving regularized least-squares problems.
 
 Currently, CF-ALS estimates HRF coefficients for each voxel independently. While effective, this can lead to noisy and spatially implausible HRF estimates, especially in data with moderate-to-high noise levels or when using flexible HRF bases (e.g., FIR or B-splines with many knots). Adjacent voxels, which often share similar physiological responses, may exhibit divergent HRF shapes.
 

@@ -1,26 +1,38 @@
 Package: hrfals
-Title: HRF Estimation using Confound-Free Alternating Least Squares
+Title: HRF Estimation using Confound-Adjusted Alternating Least Squares
 Version: 0.0.0.9000
 Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@utoronto.ca", role = c("aut", "cre"))
-Description: Implements the Confound-Free Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data. The package provides fast, accurate, and robust alternatives for data-driven HRF estimation that work with any HRF basis from the fmrireg package.
+Author: Bradley Buchsbaum [aut, cre]
+Maintainer: Bradley Buchsbaum <bradley.buchsbaum@utoronto.ca>
+Description: Implements the Confound-Adjusted Alternating Least Squares (CF-ALS) method for estimating hemodynamic response functions (HRFs) from fMRI data. The package provides fast, accurate, and robust alternatives for data-driven HRF estimation that work with any HRF basis from the fmridesign and fmrihrf packages.
 License: GPL-3
 Encoding: UTF-8
-RoxygenNote: 7.3.2.9000
+RoxygenNote: 7.3.3
 Depends: 
     R (>= 3.5.0)
 Imports:
-    fmrireg (>= 0.0.0.9000),
+    fmridesign,
+    fmridataset,
+    fmrihrf,
     Matrix,
     broom,
     ggplot2,
     Rcpp,
     Rlinsolve,
-    glmnet
+    glmnet,
+    tibble,
+    withr
+Suggests:
+    knitr,
+    rmarkdown,
+    RhpcBLASctl,
+    testthat
+VignetteBuilder: knitr
 LinkingTo:
     Rcpp,
     RcppArmadillo
-SystemRequirements: C++11
 Remotes:
-    bbuchsbaum/fmrireg
+    bbuchsbaum/fmridesign,
+    bbuchsbaum/fmrihrf
 URL: https://github.com/bbuchsbaum/hrfals
 BugReports: https://github.com/bbuchsbaum/hrfals/issues

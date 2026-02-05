@@ -5,5 +5,5 @@
 \title{CFALS Design Utilities}
 \description{
 Helper functions for interfacing the CF-ALS engine with the
-fmrireg HRF basis system.
+fmridesign HRF basis system.
 }

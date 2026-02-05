@@ -13,17 +13,16 @@ hrfals_sparse(
 \arguments{
 \item{...}{Arguments passed on to [hrfals()].}
 
-\item{beta_penalty}{List with elements `l1`, `alpha`, and `warm_start`
-forwarded to `estimate_hrf_cfals` for sparse beta estimation.
-Setting `l1 > 0` triggers an Elastic Net beta update with mixing
-parameter `alpha`. Typical `l1` values are between 0.01 and 0.1 for
-scaled predictors. Warm-starting reuses betas from the previous
-iteration to speed convergence.}
+\item{beta_penalty}{List with elements \code{l1}, \code{alpha}, and 
+\code{warm_start} for sparse beta estimation. Setting \code{l1 > 0} 
+triggers an Elastic Net beta update with mixing parameter \code{alpha}. 
+Typical \code{l1} values are between 0.01 and 0.1 for scaled predictors. 
+Warm-starting reuses betas from the previous iteration to speed convergence.}
 
 \item{design_control}{List of design matrix processing options. Set
-`standardize_predictors = TRUE` to z-score continuous predictors
+\code{standardize_predictors = TRUE} to z-score continuous predictors
 before estimation. Betas are returned in the original units. When
-`cache_design_blocks = TRUE` lagged design matrices are cached in
+\code{cache_design_blocks = TRUE}, lagged design matrices are cached in
 memory when feasible to avoid recomputation.}
 }
 \description{

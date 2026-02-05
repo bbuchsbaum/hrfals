@@ -26,66 +26,59 @@ hrfals(
 )
 }
 \arguments{
-\item{fmri_data_obj}{An `fmri_dataset` or numeric matrix of BOLD data
-(time points x voxels). If a dataset, sampling information is
-taken from the object.}
+\item{fmri_data_obj}{An \code{fmri_dataset} object or numeric matrix of 
+BOLD data (time points x voxels).}
 
-\item{event_model}{An `event_model` describing the stimuli to use
-for HRF estimation.}
+\item{event_model}{An \code{event_model} object describing the experimental
+design and stimulus events.}
 
-\item{hrf_basis}{An `HRF` basis object from the `fmrireg` package
-(e.g., `HRF_BSPLINE`, `HRF_TENT`, `HRF_SPMG3`). This determines the
-set of basis functions used to model the HRF. The CF-ALS method
-can work with any basis where `nbasis > 1`.}
+\item{hrf_basis}{An \code{HRF} basis object from the fmrihrf package
+defining the basis functions for HRF estimation.}
 
-\item{confound_obj}{Optional numeric matrix of confound regressors (time
-points x number of confounds). These nuisance variables are projected
-out from the BOLD data and design matrices prior to CF-ALS estimation.
-Defaults to `NULL` (no confounds).}
+\item{confound_obj}{Optional matrix of confound regressors to project out
+(e.g., motion parameters, physiological noise).}
 
 \item{baseline_model}{Optional baseline model to project out alongside
-`confound_obj`.}
+\code{confound_obj}.}
 
-\item{beta_penalty}{List with elements `l1`, `alpha`, and `warm_start`
-forwarded to `estimate_hrf_cfals` for sparse beta estimation.
-Setting `l1 > 0` triggers an Elastic Net beta update with mixing
-parameter `alpha`. Typical `l1` values are between 0.01 and 0.1 for
-scaled predictors. Warm-starting reuses betas from the previous
-iteration to speed convergence.}
+\item{beta_penalty}{List with elements \code{l1}, \code{alpha}, and 
+\code{warm_start} for sparse beta estimation. Setting \code{l1 > 0} 
+triggers an Elastic Net beta update with mixing parameter \code{alpha}. 
+Typical \code{l1} values are between 0.01 and 0.1 for scaled predictors. 
+Warm-starting reuses betas from the previous iteration to speed convergence.}
 
 \item{design_control}{List of design matrix processing options. Set
-`standardize_predictors = TRUE` to z-score continuous predictors
+\code{standardize_predictors = TRUE} to z-score continuous predictors
 before estimation. Betas are returned in the original units. When
-`cache_design_blocks = TRUE` lagged design matrices are cached in
+\code{cache_design_blocks = TRUE}, lagged design matrices are cached in
 memory when feasible to avoid recomputation.}
 
-\item{lam_beta}{Numeric. The regularization parameter for the beta (amplitude)
-update step. Controls the L2 penalty on the amplitude coefficients.
-Defaults to 10.}
+\item{lam_beta}{Ridge penalty for the beta (amplitude) update step.}
 
-\item{lam_h}{Numeric. The regularization parameter for the h (HRF coefficient)
-update step. Controls the L2 penalty on the HRF basis coefficients.
-Defaults to 1.}
+\item{lam_h}{Ridge penalty for the h (HRF shape) update step.}
 
-\item{R_mat}{Optional penalty matrix for the h (HRF coefficient) update.
-If `NULL` (default), an identity matrix is used, corresponding to a simple
-ridge penalty. If a basis-specific penalty (e.g., for smoothing) is
-available from `hrf_basis`, it can be passed here.}
+\item{lambda_s}{Spatial regularization strength for smoothing HRF estimates
+across neighboring voxels. Requires \code{laplacian_obj} when > 0.}
 
-\item{fullXtX}{Logical. If `TRUE`, the h-update step uses the full
-Gramian matrix \eqn{(\sum_l \beta_l X_l)^\top (\sum_m \beta_m X_m)},
-including cross-condition terms \eqn{\beta_l \beta_m X_l^\top X_m}.
-If `FALSE` (default), cross-condition terms are omitted and the
-Gramian is approximated by \eqn{\sum_l \beta_l^2 X_l^\top X_l}. In
-both cases a single shared HRF coefficient vector is estimated per
-voxel.}
+\item{laplacian_obj}{Optional Laplacian matrix object from 
+\code{build_voxel_laplacian()} for spatial regularization.}
 
-\item{max_alt}{Integer. The maximum number of alternations between the beta
-and h updates. The proposal notes that empirically one alternation
-(`max_alt = 1`) after SVD initialization is often sufficient.
-Defaults to 1.}
+\item{h_solver}{Solver for the h-update: "direct" (default), "cg" 
+(conjugate gradient), or "auto".}
 
-\item{...}{Additional arguments passed to the underlying estimation engine.}
+\item{cg_max_iter}{Maximum iterations for conjugate gradient solver.}
+
+\item{cg_tol}{Convergence tolerance for conjugate gradient solver.}
+
+\item{R_mat}{Optional penalty matrix for HRF coefficients. If NULL,
+uses identity matrix (standard ridge penalty).}
+
+\item{fullXtX}{Logical. If TRUE, uses full cross-condition Gramian matrix
+in h-update. If FALSE (default), uses diagonal approximation.}
+
+\item{max_alt}{Maximum number of alternating least squares iterations.}
+
+\item{...}{Additional arguments passed to \code{estimate_hrf_cfals}.}
 }
 \value{
 An object of class `hrfals_fit`. This object contains:
@@ -101,15 +94,22 @@ An object of class `hrfals_fit`. This object contains:
     \item (Other elements as defined by the `hrfals_fit` class structure from the proposal, like `call`).
   }
 
-An object of class \code{hrfals_fit}.
+An object of class \code{hrfals_fit} containing:
+  \item{h_coeffs}{Matrix of HRF basis coefficients (nbasis x voxels)}
+  \item{beta_amps}{Matrix of condition amplitudes (conditions x voxels)}
+  \item{recon_hrf}{Reconstructed HRF time courses}
+  \item{gof}{Goodness-of-fit (R-squared) per voxel}
+  \item{residuals}{Model residuals}
+  \item{method}{Estimation method used}
+  \item{lambdas}{List of regularization parameters used}
 }
 \description{
-Convenience wrapper for the original CF-ALS implementation.  This
-function simply calls [fmrireg_cfals()] with `method = "cf_als"` and
-retains the historical argument names.
+Convenience wrapper for the original CF-ALS implementation. This
+function simply calls [estimate_hrf_cfals()] with CF-ALS defaults and
+retains the historical argument names for backwards compatibility.
 }
 \details{
-This function implements the Confound-Free Alternating Least Squares (CF-ALS)
+This function implements the Confound-Adjusted Alternating Least Squares (CF-ALS)
 algorithm for data-driven estimation of Hemodynamic Response Functions (HRFs)
 from fMRI data. It estimates HRF coefficients (`h`) and activation
 amplitudes (`beta`) simultaneously using a rank-1 decomposition model:
@@ -120,7 +120,7 @@ Key steps of the algorithm include:
 \enumerate{
   \item Confound Projection: Nuisance regressors (if provided via `confound_obj`) are removed from both the BOLD data (Y) and the HRF basis design matrices (X.list) using QR-based orthogonal projection.
   \item Precomputation: Quantities like X^T X and X^T Y are precomputed for efficiency.
-  \item SVD Initialization: Robust starting values for `h` and `beta` are obtained using a regularized least squares solution followed by Singular Value Decomposition (SVD) of the initial coefficient estimates. (This is handled by the main `fmrireg_cfals` function when `method="cf_als"`).
+  \item SVD Initialization: Robust starting values for `h` and `beta` are obtained using a regularized least squares solution followed by Singular Value Decomposition (SVD) of the initial coefficient estimates.
   \item CF-ALS Alternation: The algorithm alternates between updating `beta` (amplitudes) holding `h` (HRF coefficients) fixed, and updating `h` holding `beta` fixed. This process is repeated for `max_alt` iterations.
     \itemize{
       \item β-update: Solves (G_mat + λ_β I)β_v = D(h)^T y_v for each voxel v, where G_mat = D(h)^T D(h).
@@ -130,7 +130,7 @@ Key steps of the algorithm include:
 }
 
 The function is designed to be compatible with any HRF basis defined in the
-`fmrireg` package (provided `nbasis(hrf_basis) > 1`). The `R_mat`
+`fmrihrf` package (provided `nbasis(hrf_basis) > 1`). The `R_mat`
 parameter allows for basis-specific penalty matrices for HRF coefficient
 regularization, although the default is an identity matrix (standard ridge penalty).
 
@@ -139,18 +139,18 @@ any confound projection has been applied.
 }
 \examples{
 # Simulate data
-sframe <- fmrireg::sampling_frame(blocklens = 40, TR = 1)
+sframe <- fmridesign::sampling_frame(blocklens = 40, TR = 1)
 ev_df <- data.frame(onset = c(5, 15, 25), block = 1, cond = "A")
-emod <- fmrireg::event_model(onset ~ hrf(cond, basis = fmrireg::HRF_SPMG3),
+emod <- fmridesign::event_model(onset ~ fmridesign::hrf(cond, basis = fmrihrf::HRF_SPMG3),
                              data = ev_df, block = ~ block,
                              sampling_frame = sframe)
 Y_matrix <- matrix(rnorm(40 * 5), 40, 5) # 40 timepoints, 5 voxels
 
-# Fit using fmrireg_hrf_cfals
-cfals_fit <- fmrireg_hrf_cfals(
+# Fit using hrfals CF-ALS defaults
+cfals_fit <- hrfals(
   fmri_data_obj = Y_matrix,
   event_model = emod,
-  hrf_basis = fmrireg::HRF_SPMG3, # Using SPMG3 basis (3 basis functions)
+  hrf_basis = fmrihrf::HRF_SPMG3, # Using SPMG3 basis (3 basis functions)
   lam_beta = 5,
   lam_h = 0.5,
   max_alt = 1
@@ -161,28 +161,45 @@ summary(cfals_fit) # If a summary method is defined
 # plot(cfals_fit)    # If a plot method is defined
 
 # Example with B-spline basis
-bspline_basis <- fmrireg::HRF_BSPLINE(knots = c(0, 4, 8, 12, 20))
-emod_bspline <- fmrireg::event_model(onset ~ hrf(cond, basis = bspline_basis),
+bspline_basis <- fmrihrf::HRF_BSPLINE
+emod_bspline <- fmridesign::event_model(onset ~ fmridesign::hrf(cond, basis = bspline_basis),
                                      data = ev_df, block = ~ block,
                                      sampling_frame = sframe)
-cfals_fit_bspline <- fmrireg_hrf_cfals(
+cfals_fit_bspline <- hrfals(
   fmri_data_obj = Y_matrix,
   event_model = emod_bspline,
   hrf_basis = bspline_basis,
   max_alt = 2
 )
 print(cfals_fit_bspline)
+\donttest{
+library(fmridesign)
+# Create sampling frame and event model
+sf <- sampling_frame(blocklens = 60, TR = 1)
+events <- data.frame(
+  onset = c(5, 15, 30, 45),
+  condition = factor(c("A", "A", "B", "B")),
+  block = 1
+)
+emod <- event_model(onset ~ hrf(condition), data = events,
+                    block = ~ block, sampling_frame = sf)
 
-Estimate HRF Using CF-ALS
+# Simulate BOLD data
+Y <- matrix(rnorm(60 * 10), 60, 10)  # 60 timepoints, 10 voxels
 
-Primary user-facing wrapper for Confound-Free Alternating Least Squares.
-Assumes a single HRF term in \code{event_model} and returns an
-\code{hrfals_fit} object.
+# Fit HRF using CF-ALS
+fit <- hrfals(Y, emod, fmrihrf::HRF_SPMG3)
+print(fit)
+}
 
 }
 \references{
 (If applicable, add references to papers describing the CF-ALS method or its implementation).
 }
 \seealso{
-[fmrireg_cfals()] for the more general wrapper allowing different estimation methods.
+[fmrireg_cfals()] for the deprecated alias, [estimate_hrf_cfals()] for the lower-level interface.
+
+\code{\link{hrfals_sparse}} for sparse estimation,
+  \code{\link{estimate_hrf_cfals}} for lower-level interface,
+  \code{\link{create_cfals_design}} for design matrix creation
 }

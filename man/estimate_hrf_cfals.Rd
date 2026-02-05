@@ -6,7 +6,7 @@
 \usage{
 estimate_hrf_cfals(
   fmri_data_obj,
-  fmrireg_event_model,
+  fmridesign_event_model,
   target_event_term_name,
   hrf_basis_for_cfals,
   confound_obj = NULL,
@@ -28,14 +28,14 @@ estimate_hrf_cfals(
   beta_penalty = list(l1 = 0, alpha = 1, warm_start = TRUE),
   design_control = list(standardize_predictors = TRUE, cache_design_blocks = TRUE),
   hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
-  hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
+  hrf_shape_resolution = fmridesign_event_model$sampling_frame$TR[1],
   ...
 )
 }
 \arguments{
-\item{fmri_data_obj}{`fmrireg::fmri_dataset` or numeric BOLD matrix.}
+\item{fmri_data_obj}{`fmridesign::fmri_dataset` or numeric BOLD matrix.}
 
-\item{fmrireg_event_model}{An `event_model` describing the full design.}
+\item{fmridesign_event_model}{An `event_model` describing the full design.}
 
 \item{target_event_term_name}{Name of the event_term to estimate.}
 
@@ -110,12 +110,14 @@ repeated HRF updates.}
 \item{hrf_shape_duration}{Duration in seconds for reconstructed HRF grid.}
 
 \item{hrf_shape_resolution}{Sampling resolution of the HRF grid.}
+
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
 An `hrfals_fit` object.
 }
 \description{
 High level wrapper around the CFALS engines operating on a single
-`event_term` within an `fmrireg::event_model`. Design matrices and
+`event_term` within an `fmridesign::event_model`. Design matrices and
 projection are handled by `create_cfals_design`.
 }

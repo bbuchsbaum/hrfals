@@ -85,7 +85,7 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
     idx_list <- split(seq_len(Tt), ceiling(seq_len(Tt) / chunk_size))
     B <- matrix(0, Tt, ncol(Y))
     if (progress)
-      pb <- txtProgressBar(min = 0, max = length(idx_list), style = 3)
+      pb <- utils::txtProgressBar(min = 0, max = length(idx_list), style = 3)
     i <- 0
     for (idx in idx_list) {
       i <- i + 1
@@ -101,7 +101,7 @@ lss_mode_a <- function(Y, A, C, p_vec, lambda_ridge = 0,
       S_chunk <- sweep(V_chunk, 2, alpha_row, "*")
       S_chunk <- S_chunk + p_vec
       B[idx, ] <- crossprod(S_chunk, Y)
-      if (progress) setTxtProgressBar(pb, i)
+      if (progress) utils::setTxtProgressBar(pb, i)
     }
     if (progress) close(pb)
   }

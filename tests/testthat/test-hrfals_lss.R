@@ -1,6 +1,6 @@
 context("hrfals_lss wrapper")
 
-library(fmrireg)
+library(fmridesign)
 
 # Tests for the hrfals LSS (Least Squares Separate) implementation
 # Includes comparison with fmrireg::glm_lss to ensure both methods work correctly
@@ -35,10 +35,10 @@ test_that("hrfals_lss stores whitening matrix", {
   expect_equal(res$whitening_matrix, W)
 })
 
-# Comparison with fmrireg LSS implementation
+# Comparison with fmridesign LSS implementation
 test_that("hrfals_lss produces trial-level results comparable to fmrireg::glm_lss", {
   # Create test data with individual trial regressors for proper LSS
-  sf <- fmrireg::sampling_frame(blocklens = 60, TR = 1)
+  sf <- fmridesign::sampling_frame(blocklens = 60, TR = 1)
   events <- data.frame(
     onset = c(5, 15, 30, 45),
     condition = factor(c("A", "A", "B", "B")),
@@ -48,18 +48,18 @@ test_that("hrfals_lss produces trial-level results comparable to fmrireg::glm_ls
   
   # Create event model with individual trial regressors for LSS
   # Use trial_id instead of condition to get individual trial regressors
-  emod <- fmrireg::event_model(onset ~ fmrireg::hrf(trial_id), data = events,
+  emod <- fmridesign::event_model(onset ~ fmridesign::hrf(trial_id), data = events,
                                block = ~ block, sampling_frame = sf)
   
   # Create design matrices
-  design <- create_fmri_design(emod, HRF_FIR)
+  design <- create_fmri_design(emod, fmrihrf::HRF_FIR)
   X_list <- design$X_list
   
   # Generate simulated data
   d <- design$d
   k <- design$k  # Should be 4 (one per trial)
   v <- 2
-  n_timepoints <- length(fmrireg::samples(sf, global = TRUE))
+  n_timepoints <- length(fmridesign::samples(sf, global = TRUE))
   
   h_true <- matrix(rnorm(d * v), d, v) * 0.5
   beta_true <- matrix(rnorm(k * v), k, v) * 0.5
@@ -75,7 +75,7 @@ test_that("hrfals_lss produces trial-level results comparable to fmrireg::glm_ls
   expect_equal(length(X_list), 4, info = "Should have 4 individual trial regressors")
   
   # Fit CF-ALS model using trial-level regressors
-  fit <- estimate_hrf_cfals(Y, emod, "hrf(trial_id)", HRF_FIR, method = "ls_svd_only")
+  fit <- estimate_hrf_cfals(Y, emod, "hrf(trial_id)", fmrihrf::HRF_FIR, method = "ls_svd_only")
   
   # Get hrfals LSS results (should now be trial-level)
   hrfals_result <- hrfals_lss(fit, emod, fmri_data_obj = Y, mode = "shared")
@@ -85,52 +85,54 @@ test_that("hrfals_lss produces trial-level results comparable to fmrireg::glm_ls
   expect_equal(nrow(hrfals_betas), 4, info = "hrfals LSS should return 4 trial-level betas")
   expect_equal(ncol(hrfals_betas), 2, info = "hrfals LSS should return betas for 2 voxels")
   
-  # Create fmrireg dataset for comparison
-  fmri_dataset <- fmrireg::matrix_dataset(Y, TR = 1, 
+  # Create fmridesign dataset for comparison
+  skip_if_not_installed("fmridataset")
+
+  fmri_dataset <- fmridataset::matrix_dataset(Y, TR = 1, 
                                           run_length = nrow(Y),
                                           event_table = events)
   
-  # Create model for fmrireg LSS (using trial_id for individual trials)
-  model_obj <- fmrireg::event_model(onset ~ hrf(trial_id), 
+  # Create model for fmridesign LSS (using trial_id for individual trials)
+  model_obj <- fmridesign::event_model(onset ~ hrf(trial_id), 
                                     data = events,
                                     block = ~ block,
                                     sampling_frame = fmri_dataset$sampling_frame)
   
-  # Get fmrireg LSS results
-  fmrireg_result <- fmrireg::glm_lss(fmri_dataset, model_obj, HRF_FIR)
+  # Get fmridesign LSS results
+  fmridesign_result <- fmrireg::glm_lss(fmri_dataset, model_obj, fmrihrf::HRF_FIR)
   
   # Test that both methods produce reasonable trial-level results
   expect_s3_class(hrfals_result, "fastlss_fit")
   expect_true(is.matrix(hrfals_betas))
   expect_equal(ncol(hrfals_betas), ncol(Y))  # Same number of voxels
   
-  expect_true(is.list(fmrireg_result))
-  expect_true("betas_ran" %in% names(fmrireg_result))
-  expect_true(is.matrix(fmrireg_result$betas_ran))
-  expect_equal(ncol(fmrireg_result$betas_ran), ncol(Y))  # Same number of voxels
+  expect_true(is.list(fmridesign_result))
+  expect_true("betas_ran" %in% names(fmridesign_result))
+  expect_true(is.matrix(fmridesign_result$betas_ran))
+  expect_equal(ncol(fmridesign_result$betas_ran), ncol(Y))  # Same number of voxels
   
   # Test that hrfals LSS results are reasonable (main focus)
   expect_gt(max(abs(hrfals_betas)), 0.01)
   expect_lt(max(abs(hrfals_betas)), 10)
   expect_true(all(is.finite(hrfals_betas)))
   
-  # Test fmrireg results if they're valid (may have numerical issues)
-  if (all(is.finite(fmrireg_result$betas_ran))) {
-    expect_gt(max(abs(fmrireg_result$betas_ran)), 0.01)
-    expect_lt(max(abs(fmrireg_result$betas_ran)), 10)
+  # Test fmridesign results if they're valid (may have numerical issues)
+  if (all(is.finite(fmridesign_result$betas_ran))) {
+    expect_gt(max(abs(fmridesign_result$betas_ran)), 0.01)
+    expect_lt(max(abs(fmridesign_result$betas_ran)), 10)
     cat("Both methods produce valid results\n")
   } else {
-    cat("fmrireg LSS encountered numerical issues; hrfals LSS works correctly\n")
+    cat("fmridesign LSS encountered numerical issues; hrfals LSS works correctly\n")
   }
   
   cat("hrfals LSS dimensions:", paste(dim(hrfals_betas), collapse="x"), "(trial-level)\n")
-  cat("fmrireg LSS dimensions:", paste(dim(fmrireg_result$betas_ran), collapse="x"), "\n")
+  cat("fmridesign LSS dimensions:", paste(dim(fmridesign_result$betas_ran), collapse="x"), "\n")
 })
 
 # Test that LSS produces trial-level amplitude estimates
 test_that("hrfals_lss correctly estimates trial-level amplitudes", {
   # Create simple test data with known trial structure
-  sf <- fmrireg::sampling_frame(blocklens = 60, TR = 1)
+  sf <- fmridesign::sampling_frame(blocklens = 60, TR = 1)
   events <- data.frame(
     onset = c(10, 20, 30, 40),
     trial_id = factor(paste0("trial_", 1:4)),
@@ -138,17 +140,17 @@ test_that("hrfals_lss correctly estimates trial-level amplitudes", {
   )
   
   # Create event model with individual trial regressors
-  emod <- fmrireg::event_model(onset ~ fmrireg::hrf(trial_id), data = events,
+  emod <- fmridesign::event_model(onset ~ fmridesign::hrf(trial_id), data = events,
                                block = ~ block, sampling_frame = sf)
   
   # Create design and simulate data
-  design <- create_fmri_design(emod, HRF_FIR)
-  n_timepoints <- length(fmrireg::samples(sf, global = TRUE))
+  design <- create_fmri_design(emod, fmrihrf::HRF_FIR)
+  n_timepoints <- length(fmridesign::samples(sf, global = TRUE))
   Y <- matrix(rnorm(n_timepoints * 3), n_timepoints, 3)
   attr(Y, "sampling_frame") <- sf
   
   # Fit CF-ALS to estimate HRF shape
-  fit <- estimate_hrf_cfals(Y, emod, "hrf(trial_id)", HRF_FIR, method = "ls_svd_only")
+  fit <- estimate_hrf_cfals(Y, emod, "hrf(trial_id)", fmrihrf::HRF_FIR, method = "ls_svd_only")
   
   # Apply LSS to get trial-specific amplitudes
   lss_result <- hrfals_lss(fit, emod, fmri_data_obj = Y, mode = "shared")

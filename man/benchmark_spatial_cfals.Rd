@@ -34,3 +34,4 @@ data frame summarising runtime and estimation error for each
 configuration. It is intended for quick performance exploration as
 described in HALS-S08 of the proposal.
 }
+\keyword{internal}

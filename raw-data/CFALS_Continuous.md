@@ -230,7 +230,7 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
 
 *   **Ticket SP-CFALS-003: Implement Predictor Standardization (`design_control$standardize_predictors`)**
     *   **Task:** In `estimate_hrf_cfals` (or its design preparation stage like `create_cfals_design`), if `standardize_predictors = TRUE`:
-        1.  Identify continuous predictors $x_k(t)$ that are *not* already standardized basis functions (e.g., output of `fmrireg::Scale()`).
+        1.  Identify continuous predictors $x_k(t)$ that are *not* already standardized basis functions (e.g., output of `fmridesign::Scale()`).
         2.  For each such $x_k(t)$, compute its mean ($\mu_k$) and standard deviation ($\sigma_k$) across time, ignoring NaNs. Handle zero/NA SD by using a small epsilon.
         3.  Standardize $x_k(t)' = (x_k(t) - \mu_k) / \sigma_k$.
         4.  Store $\mu_k$ and $\sigma_k$ (K-length vectors) in the `hrfals_fit` object (e.g., in `design_info` or a new slot like `predictor_scaling_info`).
@@ -331,7 +331,7 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
 *   **Ticket SP-CFALS-015: Develop Vignette for "Many Continuous Predictors"**
     *   **Task:** Create a new vignette demonstrating the use case:
         1.  Simulating/loading fMRI data and a matrix of $K \approx 100-300$ continuous features.
-        2.  Setting up the `fmrireg::event_model` to use these features (e.g., perhaps each $x_k(t)$ is a column in the `data` frame passed to `event_model`, and the formula is `onset ~ hrf(x1) + hrf(x2) + ...`, or a more programmatic way to specify many `hrf(x_k)` terms if `fmrireg` supports it, or if this CF-ALS variant will take `X_list_raw` directly). *This part needs careful thought on how users will specify many $x_k(t)$ to `hrfals`.*
+        2.  Setting up the `fmridesign::event_model` to use these features (e.g., perhaps each $x_k(t)$ is a column in the `data` frame passed to `event_model`, and the formula is `onset ~ hrf(x1) + hrf(x2) + ...`, or a more programmatic way to specify many `hrf(x_k)` terms if `fmrireg` supports it, or if this CF-ALS variant will take `X_list_raw` directly). *This part needs careful thought on how users will specify many $x_k(t)$ to `hrfals`.*
         3.  Resolve user interface for specifying many continuous predictors:
             *   Implement support for `hrf(Ident(x1, ..., xK))` in `create_cfals_design`
             *   Document the matrix splitting logic ($(K \cdot d)$ matrix → $K$ separate $X_k$ blocks)
@@ -341,13 +341,13 @@ This list assumes the `hrfals` package structure you provided (with `cf_als_engi
         6.  Interpreting which features drive which voxels.
     *   **Acceptance:** Vignette is clear, runnable, and effectively showcases the new functionality. The user interface for many continuous predictors is well-documented and demonstrated.
 
-**Considerations for `fmrireg::event_model` interaction (re: Vignette task SP-CFALS-015):**
+**Considerations for `fmridesign::event_model` interaction (re: Vignette task SP-CFALS-015):**
 
-The current `fmrireg::event_model` using formulas like `onset ~ hrf(x1) + hrf(x2) + ... + hrf(xK)` would create $K$ separate `event_term` objects. The current `estimate_hrf_cfals` targets *one* `event_term`.
+The current `fmridesign::event_model` using formulas like `onset ~ hrf(x1) + hrf(x2) + ... + hrf(xK)` would create $K$ separate `event_term` objects. The current `estimate_hrf_cfals` targets *one* `event_term`.
 
-*   **Option A:** The user provides a *single* `event_term` to `estimate_hrf_cfals` where this term is constructed using `fmrireg::Ident(x1, x2, ..., xK)`. Then `fmrireg::create_fmri_design` (which `hrfals` calls via `create_cfals_design`) would need to correctly produce $K$ separate $X_k$ design blocks from this single `Ident` term when combined with the `hrf_basis_for_cfals`. This is the most `fmrireg`-idiomatic way.
-*   **Option B:** `estimate_hrf_cfals` is modified to accept a *list* of $K$ continuous predictor time series $x_k(t)$ directly, bypassing `event_model` for this specific use case, and forms the $X_k$ internally. This is less integrated but might be simpler if `fmrireg::Ident()` doesn't naturally produce the required $X_k$ structure for CF-ALS.
+*   **Option A:** The user provides a *single* `event_term` to `estimate_hrf_cfals` where this term is constructed using `fmridesign::Ident(x1, x2, ..., xK)`. Then `fmridesign::create_fmri_design` (which `hrfals` calls via `create_cfals_design`) would need to correctly produce $K$ separate $X_k$ design blocks from this single `Ident` term when combined with the `hrf_basis_for_cfals`. This is the most `fmrireg`-idiomatic way.
+*   **Option B:** `estimate_hrf_cfals` is modified to accept a *list* of $K$ continuous predictor time series $x_k(t)$ directly, bypassing `event_model` for this specific use case, and forms the $X_k$ internally. This is less integrated but might be simpler if `fmridesign::Ident()` doesn't naturally produce the required $X_k$ structure for CF-ALS.
 
-Option A is preferable for consistency. The `create_fmri_design` function (from `hrfals`) would need to be smart about how it processes an `event_model` term created with `hrf(Ident(x1, ..., xK), basis = hrf_basis_for_cfals)` to yield the list of $K$ separate $n \times d$ matrices. This seems achievable as `fmrireg::convolve.event_term` would produce an $n \times (K \cdot d)$ matrix, which could then be split.
+Option A is preferable for consistency. The `create_fmri_design` function (from `hrfals`) would need to be smart about how it processes an `event_model` term created with `hrf(Ident(x1, ..., xK), basis = hrf_basis_for_cfals)` to yield the list of $K$ separate $n \times d$ matrices. This seems achievable as `fmridesign::convolve.event_term` would produce an $n \times (K \cdot d)$ matrix, which could then be split.
 
 This ticketed list should provide a solid, actionable plan.

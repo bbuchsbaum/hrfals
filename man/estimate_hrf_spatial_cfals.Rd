@@ -6,7 +6,7 @@
 \usage{
 estimate_hrf_spatial_cfals(
   fmri_data_obj,
-  fmrireg_event_model,
+  fmridesign_event_model,
   target_event_term_name,
   hrf_basis_for_cfals,
   laplacian_obj,
@@ -15,9 +15,9 @@ estimate_hrf_spatial_cfals(
 )
 }
 \arguments{
-\item{fmri_data_obj}{`fmrireg::fmri_dataset` or numeric BOLD matrix.}
+\item{fmri_data_obj}{`fmridesign::fmri_dataset` or numeric BOLD matrix.}
 
-\item{fmrireg_event_model}{An `event_model` describing the full design.}
+\item{fmridesign_event_model}{An `event_model` describing the full design.}
 
 \item{target_event_term_name}{Name of the event_term to estimate.}
 
@@ -28,6 +28,11 @@ degree vector `degree` as returned by [build_voxel_laplacian()].
 Required when `lambda_s > 0`.}
 
 \item{lambda_s_default}{Default spatial regularisation strength.}
+
+\item{...}{Additional arguments passed to \code{estimate_hrf_cfals}.}
+}
+\value{
+An `hrfals_fit` object with spatial regularization applied.
 }
 \description{
 Calls [estimate_hrf_cfals()] with a predefined non-zero `lambda_s`.

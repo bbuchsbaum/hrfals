@@ -11,7 +11,7 @@
 #' @param lambda_ridge Optional ridge penalty applied in both
 #'   implementations.
 #' @return A data frame summarising runtimes and speed ups.
-#' @export
+#' @keywords internal
 benchmark_fastlss <- function(n_seq = c(40, 80),
                               T_seq = c(10, 20),
                               v_seq = c(5, 10),
@@ -38,10 +38,10 @@ benchmark_fastlss <- function(n_seq = c(40, 80),
 
   simulate_data <- function(n, Tt, v, m = 3) {
     set.seed(1)
-    A <- matrix(rnorm(n * m), n, m)
-    C <- matrix(rnorm(n * Tt), n, Tt)
-    Y <- matrix(rnorm(n * v), n, v)
-    p_vec <- rnorm(n)
+    A <- matrix(stats::rnorm(n * m), n, m)
+    C <- matrix(stats::rnorm(n * Tt), n, Tt)
+    Y <- matrix(stats::rnorm(n * v), n, v)
+    p_vec <- stats::rnorm(n)
     list(Y = Y, A = A, C = C, p = p_vec)
   }
 
@@ -50,7 +50,7 @@ benchmark_fastlss <- function(n_seq = c(40, 80),
     for (Tt in T_seq) {
       for (v in v_seq) {
         dat <- simulate_data(n, Tt, v)
-        mem <- sum(sapply(dat, object.size))
+        mem <- sum(sapply(dat, utils::object.size))
         t_fast <- system.time(
           fastlss_shared(dat$Y, dat$A, dat$C, dat$p,
                          lambda_ridge = lambda_ridge)

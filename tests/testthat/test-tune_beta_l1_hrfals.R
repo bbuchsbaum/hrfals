@@ -1,6 +1,6 @@
 context("tune_beta_l1_hrfals")
 
-library(fmrireg)
+library(fmridesign)
 
 simulate_small_data <- function() {
   sf <- sampling_frame(blocklens = 20, TR = 1)

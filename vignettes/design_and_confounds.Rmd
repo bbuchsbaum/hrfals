@@ -1,0 +1,142 @@
+---
+title: "Preparing CF-ALS Designs with Confounds"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preparing CF-ALS Designs with Confounds}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(123)
+```
+
+The `create_cfals_design()` helper is the main bridge between
+`fmridesign` event models and the CF-ALS solver implemented in
+`hrfals`.  This vignette demonstrates how to build a design that
+projects out confounds before estimation and how to inspect the
+returned metadata.
+
+## Simulated experiment
+
+We start with a two-condition event model sampled every second for a
+short run.  Mimicking typical preprocessing, we also create a small
+confound matrix that might represent motion parameters or nuisance
+signals.
+
+```{r}
+library(hrfals)
+library(fmridesign)
+
+TR <- 1
+n_time <- 120
+sf <- sampling_frame(blocklens = n_time, TR = TR)
+
+events <- data.frame(
+  onset = c(10, 26, 48, 72, 90),
+  condition = factor(c("A", "B", "A", "B", "A")),
+  block = 1
+)
+
+emod <- event_model(
+  onset ~ hrf(condition),
+  data = events,
+  block = ~ block,
+  sampling_frame = sf
+)
+
+hrf_basis <- fmrihrf::HRF_FIR  # default FIR basis with 12 taps
+
+# simple confound matrix with drift + random nuisance
+confound_obj <- cbind(
+  drift = scale(seq_len(n_time)),
+  nuisance = rnorm(n_time)
+)
+```
+
+Next we simulate a small BOLD matrix with three voxels using a fixed HRF
+shape and the design blocks produced by `create_fmri_design()`.
+
+```{r}
+design <- create_fmri_design(emod, hrf_basis)
+
+h_coeffs_true <- c(0, 1.5, 2.5, 1.5, 0.5, rep(0, design$d - 5))
+
+# build predicted response for each condition
+signal <- vapply(design$X_list, function(X) drop(X %*% h_coeffs_true), numeric(n_time))
+
+beta_true <- setNames(c(1.2, -0.8), colnames(signal))
+Y_clean <- as.numeric(signal %*% beta_true)
+Y <- matrix(Y_clean, n_time, 3) + matrix(rnorm(n_time * 3, sd = 0.15), n_time)
+```
+
+## Building the CF-ALS design
+
+With the simulated BOLD data, event model, HRF basis, and confounds in
+hand we call `create_cfals_design()`.  The helper returns the projected
+BOLD matrix, a list of projected design blocks, and bookkeeping values
+that downstream solvers reuse.
+
+```{r}
+cfals_inputs <- create_cfals_design(
+  fmri_data_obj = Y,
+  event_model = emod,
+  hrf_basis = hrf_basis,
+  confound_obj = confound_obj,
+  design_control = list(standardize_predictors = TRUE,
+                        cache_design_blocks = FALSE)
+)
+
+names(cfals_inputs)
+```
+
+The projected data and design blocks have the same number of rows as the
+original run but confounds have already been removed.  Inspecting the
+structures confirms the dimensions are ready for CF-ALS.
+
+```{r}
+str(list(
+  Y_proj = dim(cfals_inputs$Y_proj),
+  first_block = dim(cfals_inputs$X_list_proj[[1]]),
+  n_conditions = cfals_inputs$k_conditions,
+  basis_dim = cfals_inputs$d_basis_dim
+))
+```
+
+The object also exposes the reconstruction matrix `Phi_recon_matrix` and
+canonical reference shape used to orient estimated HRFs.  These can be
+useful when visualising results or when passing outputs to lower-level
+engines such as `cf_als_engine()`.
+
+## Running CF-ALS using the prepared inputs
+
+One convenient pattern is to reuse the design objects when calling
+`hrfals()`.  Below we demonstrate an explicit call by pulling the
+essential elements and forwarding them to `cf_als_engine()`.
+
+```{r}
+fit <- hrfals:::cf_als_engine(
+  X_list_proj = cfals_inputs$X_list_proj,
+  Y_proj = cfals_inputs$Y_proj,
+  lambda_b = 0.1,
+  lambda_h = 0.1,
+  Phi_recon_matrix = cfals_inputs$Phi_recon_matrix,
+  h_ref_shape_canonical = cfals_inputs$h_ref_shape_canonical,
+  max_alt = 1,
+  precompute_xty_flag = TRUE,
+  fullXtX_flag = FALSE
+)
+
+time_points <- seq(0, by = cfals_inputs$sampling_frame$TR[1],
+                   length.out = nrow(cfals_inputs$Phi_recon_matrix))
+hrf_est <- drop(cfals_inputs$Phi_recon_matrix %*% fit$h[, 1])
+plot(time_points, hrf_est, type = "l",
+     xlab = "Time (s)", ylab = "HRF (a.u.)",
+     main = "Estimated HRF (voxel 1)")
+```
+
+For most workflows you can simply call `hrfals()` with the same inputs
+rather than the lower-level engine.  Still, understanding what
+`create_cfals_design()` returns makes it easier to customise confound
+handling or integrate with bespoke pipelines.

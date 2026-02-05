@@ -1,6 +1,6 @@
 context("normalize_and_align_hrf and predict")
 
-library(fmrireg)
+library(fmridesign)
 
 # Test sign flipping and zeroing in normalize_and_align_hrf
 
@@ -14,7 +14,7 @@ test_that("normalize_and_align_hrf flips sign and zeroes small scale", {
   res <- normalize_and_align_hrf(H, B, Phi, href, epsilon_scale = 1e-6,
                                  Y_proj = Yp, X_list_proj = X_list)
   expect_equal(res$h[, 1], c(0.5, 1))
-  expect_equal(res$beta[1, 1], -2)
+  expect_equal(unname(res$beta[1, 1]), -2)
   expect_true(all(res$h[, 2] == 0))
   expect_true(all(res$beta[, 2] == 0))
 })

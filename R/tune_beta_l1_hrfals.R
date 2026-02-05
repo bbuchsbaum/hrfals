@@ -39,12 +39,8 @@ tune_beta_l1_hrfals <- function(fmri_data_obj_subset,
                                                          lam_h = 0.01),
                                 cv_voxel_subset_train_prop = 0.7,
                                 seed = NULL) {
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
-
   Y <- if (inherits(fmri_data_obj_subset, "fmri_dataset")) {
-    fmrireg::get_data_matrix(fmri_data_obj_subset)
+    fmridataset::get_data_matrix(fmri_data_obj_subset)
   } else if (is.matrix(fmri_data_obj_subset)) {
     fmri_data_obj_subset
   } else {
@@ -52,7 +48,14 @@ tune_beta_l1_hrfals <- function(fmri_data_obj_subset,
   }
 
   v <- ncol(Y)
-  train_idx <- sample(seq_len(v), size = floor(cv_voxel_subset_train_prop * v))
+  sample_train <- function() {
+    sample(seq_len(v), size = floor(cv_voxel_subset_train_prop * v))
+  }
+  train_idx <- if (!is.null(seed)) {
+    withr::with_seed(seed, sample_train())
+  } else {
+    sample_train()
+  }
   test_idx <- setdiff(seq_len(v), train_idx)
 
   results <- data.frame(l1 = l1_grid,
@@ -62,6 +65,10 @@ tune_beta_l1_hrfals <- function(fmri_data_obj_subset,
   for (i in seq_along(l1_grid)) {
     l1_val <- l1_grid[i]
 
+    # Remove max_alt from other_hrfals_args if present to avoid duplication
+    other_args_clean <- other_hrfals_args
+    other_args_clean$max_alt <- NULL
+    
     args_common <- c(list(fmri_data_obj = Y[, train_idx, drop = FALSE],
                           event_model = event_model,
                           hrf_basis = hrf_basis,
@@ -69,7 +76,7 @@ tune_beta_l1_hrfals <- function(fmri_data_obj_subset,
                                                alpha = alpha_value,
                                                warm_start = TRUE),
                           max_alt = n_outer_iterations_cfals),
-                     other_hrfals_args)
+                     other_args_clean)
     fit_train <- do.call(hrfals, args_common)
     train_mse <- mean(fit_train$residuals^2)
 

@@ -10,10 +10,10 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
 *   **A. CF-ALS Design & Projection Utilities (in `hrfals/R/cfals_design_utils_hrfals.R`):**
     *   **Function:** `hrfals::prepare_cfals_inputs_from_fmrireg_term(fmri_data_obj, fmrireg_event_model, target_event_term_name, fmrireg_hrf_basis, confound_obj, hrf_shape_duration_sec, hrf_shape_sample_res_sec)`
         *   **Inputs:**
-            *   `fmri_data_obj`: `fmrireg::fmri_dataset` or BOLD matrix.
-            *   `fmrireg_event_model`: An `fmrireg::event_model` object.
+            *   `fmri_data_obj`: `fmridesign::fmri_dataset` or BOLD matrix.
+            *   `fmrireg_event_model`: An `fmridesign::event_model` object.
             *   `target_event_term_name`: Character string, the name of the *single* `event_term` within `fmrireg_event_model` to process with CF-ALS.
-            *   `fmrireg_hrf_basis`: An `fmrireg::HRF` object to be used for *this CF-ALS fit*. **Must have `fmrireg::nbasis(fmrireg_hrf_basis) > 1`.**
+            *   `fmrireg_hrf_basis`: An `fmridesign::HRF` object to be used for *this CF-ALS fit*. **Must have `fmridesign::nbasis(fmrireg_hrf_basis) > 1`.**
             *   `confound_obj`: Optional confound matrix.
             *   `hrf_shape_duration_sec`, `hrf_shape_sample_res_sec`: For `Phi` and `h_ref_shape`.
         *   **Steps:**
@@ -21,7 +21,7 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
             2.  **Select Target `event_term` from `fmrireg_event_model`:**
                 *   `fmrireg_directive:`
                     ```R
-                    all_terms <- fmrireg::terms(fmrireg_event_model)
+                    all_terms <- fmridesign::terms(fmrireg_event_model)
                     if (!target_event_term_name %in% names(all_terms)) {
                       stop("Target event term '", target_event_term_name, "' not found in event_model.")
                     }
@@ -34,25 +34,25 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
                 *   `fmrireg_directive:`
                     ```R
                     # design_matrix.event_term gives the unconvolved predictors (e.g., stick functions per condition level)
-                    X_unconvolved_term <- fmrireg::design_matrix(target_term_obj, drop.empty = TRUE) 
+                    X_unconvolved_term <- fmridesign::design_matrix(target_term_obj, drop.empty = TRUE) 
                     # drop.empty = TRUE is important to match number of estimable conditions
                     ```
                 *   `k_conditions = ncol(X_unconvolved_term)`. If `k_conditions == 0`, stop or warn.
-            4.  `d_basis_dim = fmrireg::nbasis(fmrireg_hrf_basis)`.
+            4.  `d_basis_dim = fmridesign::nbasis(fmrireg_hrf_basis)`.
                 *   If `d_basis_dim <= 1`, `stop("CF-ALS requires an hrf_basis with nbasis > 1.")`.
             5.  **Generate `X_list_raw` (`k_conditions` list of `n x d_basis_dim` matrices):**
                 *   For each condition `c` (column `c`) of `X_unconvolved_term`:
                     *   `raw_onsets_c_timeseries = X_unconvolved_term[, c]` (an `n x 1` vector representing that condition's unconvolved predictor).
                     *   `X_list_raw[[c]]` (`n x d_basis_dim`):
                         *   Column `j` is `convolve_timeseries_with_single_basis(raw_onsets_c_timeseries, fmrireg_hrf_basis, basis_function_index = j, sampling_frame = fmrireg_event_model$sampling_frame)`.
-                        *   *(This helper `convolve_timeseries_with_single_basis` needs to be implemented in `hrfals`. It would take an `fmrireg::HRF` object, extract its `j`-th basis function (e.g., by creating a temporary `HRF` object for it), and perform convolution, possibly using `fmrireg::evaluate` and `stats::convolve` or a C++ helper.)*
+                        *   *(This helper `convolve_timeseries_with_single_basis` needs to be implemented in `hrfals`. It would take an `fmridesign::HRF` object, extract its `j`-th basis function (e.g., by creating a temporary `HRF` object for it), and perform convolution, possibly using `fmridesign::evaluate` and `stats::convolve` or a C++ helper.)*
                 *   Apply NA row zeroing to `X_list_raw` consistent with `Y_raw`.
             6.  **Generate `Phi_recon_matrix` and `h_ref_shape_canonical_p_dim` (within `hrfals`):**
                 *   `fmrireg_directive (for Phi):`
                     ```R
                     time_points_for_shape = seq(0, hrf_shape_duration_sec, by = hrf_shape_sample_res_sec)
                     # Phi_recon_matrix will be p x d_basis_dim
-                    Phi_recon_matrix = fmrireg::evaluate(fmrireg_hrf_basis, time_points_for_shape)
+                    Phi_recon_matrix = fmridesign::evaluate(fmrireg_hrf_basis, time_points_for_shape)
                     if (is.vector(Phi_recon_matrix) && d_basis_dim == 1) Phi_recon_matrix <- matrix(Phi_recon_matrix, ncol=1)
                     if (ncol(Phi_recon_matrix) != d_basis_dim) stop("Mismatch in Phi_recon_matrix columns and nbasis.")
                     ```
@@ -63,17 +63,17 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
 *   **B. Refactored `ls_svd_engine` (R Function - in `hrfals`):** (As before, uses outputs of `prepare_cfals_inputs_from_fmrireg_term`).
 
 *   **C. Refactored `cf_als_engine` (R Function - iterative core, in `hrfals`):**
-    *   **Input `R_mat_user`:** If `NULL`, `R_mat_eff = diag(d_basis_dim)`. *`hrfals` will not attempt to call a `fmrireg::penalty_matrix` S3 method unless `hrfals` itself defines one for `fmrireg::HRF` objects.*
+    *   **Input `R_mat_user`:** If `NULL`, `R_mat_eff = diag(d_basis_dim)`. *`hrfals` will not attempt to call a `fmridesign::penalty_matrix` S3 method unless `hrfals` itself defines one for `fmridesign::HRF` objects.*
     *   (Rest as before).
 
 *   **D. Refactored `ls_svd_1als_engine` (R Function - in `hrfals`):** (Calls refactored engines).
 
 *   **E. Main User-Facing Wrapper `hrfals::estimate_hrf_cfals(...)` (R):**
     1.  **Inputs:**
-        *   `fmri_data_obj`: `fmrireg::fmri_dataset` or BOLD matrix.
-        *   `fmrireg_event_model`: An `fmrireg::event_model` object.
+        *   `fmri_data_obj`: `fmridesign::fmri_dataset` or BOLD matrix.
+        *   `fmrireg_event_model`: An `fmridesign::event_model` object.
         *   `target_event_term_name`: Character string (name of `event_term` in `fmrireg_event_model`).
-        *   `hrf_basis_for_cfals`: An `fmrireg::HRF` object (e.g., `fmrireg::HRF_BSPLINE()`), **must have `nbasis > 1`**.
+        *   `hrf_basis_for_cfals`: An `fmridesign::HRF` object (e.g., `fmridesign::HRF_BSPLINE()`), **must have `nbasis > 1`**.
         *   (Other params: `confound_obj`, `method`, lambdas, `R_mat` (user custom), `fullXtX`, `max_alt`, `hrf_shape_duration`, `hrf_shape_resolution`).
     2.  Calls `prepare_cfals_inputs_from_fmrireg_term`.
     3.  Dispatches to R engines.
@@ -85,19 +85,19 @@ To develop an all-R CF-ALS suite in the `hrfals` package, consuming `fmrireg` ob
 *   **F. Output Class & Methods (in `hrfals`):**
     *   `hrfals_fit` class: Store `fmrireg_hrf_basis_used` (the one passed to `estimate_hrf_cfals`).
 
-**4. Sprint Plan (All-R Refactor in `hrfals` Package, Focusing on Single `fmrireg::event_term`):**
+**4. Sprint Plan (All-R Refactor in `hrfals` Package, Focusing on Single `fmridesign::event_term`):**
 
 **Sprint 0: `hrfals` Package Setup & Core `fmrireg` Interaction Utilities**
 *   **`HRFALS-V2.1-S0-T1`: Package Structure & Dependencies** (Imports `fmrireg`).
 *   **`HRFALS-V2.1-S0-T2`: Implement `hrfals:::convolve_timeseries_with_single_basis` Helper:**
-    *   **Task:** Takes `raw_timeseries (n x 1)`, `fmrireg_hrf_obj`, `basis_function_index (j)`, `fmrireg_sampling_frame`. Creates a temporary single-basis `fmrireg::HRF` from `fmrireg_hrf_obj[[j]]` and convolves.
-    *   **DoD:** Helper correctly convolves a timeseries with the j-th basis function of any `fmrireg::HRF` object.
+    *   **Task:** Takes `raw_timeseries (n x 1)`, `fmrireg_hrf_obj`, `basis_function_index (j)`, `fmrireg_sampling_frame`. Creates a temporary single-basis `fmridesign::HRF` from `fmrireg_hrf_obj[[j]]` and convolves.
+    *   **DoD:** Helper correctly convolves a timeseries with the j-th basis function of any `fmridesign::HRF` object.
 *   **`HRFALS-V2.1-S0-T3`: Implement `hrfals::prepare_cfals_inputs_from_fmrireg_term` Utility:**
     *   Implement logic to select `target_term_obj` from `fmrireg_event_model`.
-    *   Use `fmrireg::design_matrix(target_term_obj)` to get `X_unconvolved_term`.
+    *   Use `fmridesign::design_matrix(target_term_obj)` to get `X_unconvolved_term`.
     *   Loop `k_conditions` times, calling `convolve_timeseries_with_single_basis` `d_basis_dim` times to form `X_list_raw`.
-    *   Implement NA row handling, `Phi_recon_matrix` generation (using `fmrireg::evaluate`), canonical `h_ref_shape_p_dim` generation, confound projection.
-    *   **DoD:** Utility correctly prepares all inputs for R engines from a *single specified term* within an `fmrireg::event_model`. Unit tested.
+    *   Implement NA row handling, `Phi_recon_matrix` generation (using `fmridesign::evaluate`), canonical `h_ref_shape_p_dim` generation, confound projection.
+    *   **DoD:** Utility correctly prepares all inputs for R engines from a *single specified term* within an `fmridesign::event_model`. Unit tested.
 *   **`HRFALS-V2.1-S0-T4`: Define `hrfals_fit` S3 Class & Basic Print/Summary.**
 
 **Sprint 1: Refactor `ls_svd_engine` in `hrfals` (No change from previous sprint plan `CFALS-R2.1-S1-T1`, `CFALS-R2.1-S1-T2`)**
@@ -211,7 +211,7 @@ Passes tests ensuring it's equivalent to cf_als_engine_r with max_alt=1.
 **Sprint 3: Top-Level Wrapper & Full `fmrireg` Integration Testing**
 *   **`HRFALS-V2.1-S3-T1`: Implement `hrfals::estimate_hrf_cfals` User-Facing Wrapper:**
     *   Takes `fmrireg_event_model` and `target_event_term_name`.
-    *   Takes `hrf_basis_for_cfals` (an `fmrireg::HRF` object, check `nbasis > 1`).
+    *   Takes `hrf_basis_for_cfals` (an `fmridesign::HRF` object, check `nbasis > 1`).
     *   Calls `prepare_cfals_inputs_from_fmrireg_term`.
     *   Handles `penalty_R_mat_type` to generate simple `R_mat` or use custom.
     *   Corrected prediction formula for residuals/R².
@@ -221,7 +221,7 @@ Passes tests ensuring it's equivalent to cf_als_engine_r with max_alt=1.
     *   `plot()` uses `Phi_recon_matrix` from `prepare_cfals_inputs...` results.
     *   **DoD:** Output object comprehensive.
 *   **`HRFALS-V2.1-S3-T3`: Comprehensive Integration Testing with `fmrireg` Objects:**
-    *   Test `estimate_hrf_cfals` with various `fmrireg::HRF` types for `hrf_basis_for_cfals` (e.g., `HRF_SPMG1` (if nbasis made >1 for testing), `HRF_SPMG3`, `HRF_BSPLINE`), targeting different terms.
+    *   Test `estimate_hrf_cfals` with various `fmridesign::HRF` types for `hrf_basis_for_cfals` (e.g., `HRF_SPMG1` (if nbasis made >1 for testing), `HRF_SPMG3`, `HRF_BSPLINE`), targeting different terms.
     *   **DoD:** High confidence in robust integration.
 
 **Sprint 4: Documentation, Examples & R Profiling (As before, for `hrfals` package)**
@@ -324,9 +324,9 @@ This `X_list_raw[["A"]]` is then what CF-ALS uses (after confound projection to 
 
 **How `fmrireg` typically handles this:**
 
-The `fmrireg` package, when you specify `hrf(condition, basis = my_hrf_basis_obj)`, and `my_hrf_basis_obj` has `d` basis functions, `fmrireg::design_matrix(event_model)` usually returns a final design matrix where, for each level of `condition`, there are `d` columns. Each of these `d` columns is the result of convolving that condition level's onsets with one of the `d` basis functions from `my_hrf_basis_obj`.
+The `fmrireg` package, when you specify `hrf(condition, basis = my_hrf_basis_obj)`, and `my_hrf_basis_obj` has `d` basis functions, `fmridesign::design_matrix(event_model)` usually returns a final design matrix where, for each level of `condition`, there are `d` columns. Each of these `d` columns is the result of convolving that condition level's onsets with one of the `d` basis functions from `my_hrf_basis_obj`.
 
-If `fmrireg::design_matrix(event_model)` returns an `n x (k*d_total_effective)` matrix where `d_total_effective` might be `d_hrf_basis * d_other_parametric_modulators`, then:
+If `fmridesign::design_matrix(event_model)` returns an `n x (k*d_total_effective)` matrix where `d_total_effective` might be `d_hrf_basis * d_other_parametric_modulators`, then:
 *   `Xbig` in CF-ALS is this exact matrix (after confound projection).
 *   `Gamma_hat` are the coefficients for these `k*d_total_effective` regressors.
 *   Reshaping `Gamma_hat` to `G_v` (`d_total_effective x k`) correctly aligns these for the SVD if `d_total_effective` represents the "shape" part and `k` is the "amplitude" part for each condition.

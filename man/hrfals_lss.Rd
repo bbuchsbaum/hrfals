@@ -17,12 +17,12 @@ hrfals_lss(
 }
 \arguments{
 \item{cf_fit}{An object of class `hrfals_fit` as returned by
-[hrfals()] or [fmrireg_cfals()].}
+[hrfals()] (or the deprecated alias [fmrireg_cfals()]).}
 
 \item{events}{A `data.frame` with onset information or an
-`fmrireg::event_model`.}
+`fmridesign::event_model`.}
 
-\item{fmri_data_obj}{BOLD data matrix or `fmrireg::fmri_dataset`
+\item{fmri_data_obj}{BOLD data matrix or `fmridesign::fmri_dataset`
 matching the data used for CF-ALS.}
 
 \item{confound_obj}{Optional confound matrix with the same number of
@@ -45,6 +45,7 @@ An object of class `fastlss_fit` containing the trial
   coefficient matrix and metadata.
 }
 \description{
-Builds trial regressors from a CF-ALS fit and event information and
+Builds trial regressors from a CF-ALS (Confound-Adjusted Alternating Least Squares)
+fit and event information and
 calls \code{fastlss_shared()} or \code{fastlss_voxel()} as appropriate.
 }

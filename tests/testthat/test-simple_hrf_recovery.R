@@ -1,5 +1,5 @@
 library(testthat)
-library(fmrireg)
+library(fmridesign)
 
 context("Simple HRF Recovery Test")
 
@@ -15,12 +15,12 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
   
   # Create two different HRF shapes to test
-  hrf1 <- fmrireg::block_hrf(fmrireg::lag_hrf(fmrireg::HRF_GAUSSIAN, lag = 2), 3)
-  hrf2 <- fmrireg::block_hrf(fmrireg::lag_hrf(fmrireg::HRF_GAUSSIAN, lag = 4), 5)
+  hrf1 <- fmrihrf::block_hrf(fmrihrf::lag_hrf(fmrihrf::HRF_GAUSSIAN, lag = 2), 3)
+  hrf2 <- fmrihrf::block_hrf(fmrihrf::lag_hrf(fmrihrf::HRF_GAUSSIAN, lag = 4), 5)
   
   # Evaluate both HRFs on our time grid
-  hrf1_vals <- fmrireg::evaluate(hrf1, timegrid)
-  hrf2_vals <- fmrireg::evaluate(hrf2, timegrid)
+  hrf1_vals <- fmrihrf::evaluate(hrf1, timegrid)
+  hrf2_vals <- fmrihrf::evaluate(hrf2, timegrid)
   if (is.matrix(hrf1_vals)) hrf1_vals <- hrf1_vals[, 1]
   if (is.matrix(hrf2_vals)) hrf2_vals <- hrf2_vals[, 1]
   
@@ -39,11 +39,11 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   
   # Create design matrix using FIR basis
   hrf_basis <- fmrihrf::HRF_FIR
-  d <- fmrireg::nbasis(hrf_basis)
+  d <- fmrihrf::nbasis(hrf_basis)
   
   # Build design matrix for single condition
   X_design <- matrix(0, n_timepoints, d)
-  basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+  basis_vals <- fmrihrf::evaluate(hrf_basis, timegrid)
   
   for (j in seq_len(d)) {
     if (is.matrix(basis_vals)) {
@@ -56,12 +56,12 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   
   # Create reconstruction matrix and canonical reference
   Phi_recon <- reconstruction_matrix(hrf_basis, timegrid)
-  h_ref_canonical <- fmrireg::evaluate(fmrihrf::HRF_SPMG1, timegrid)
+  h_ref_canonical <- fmridesign::evaluate(fmrihrf::HRF_SPMG1, timegrid)
   if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
   h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
   
   # Test 1: Run ls_svd_engine on data generated with hrf1
-  result1 <- ls_svd_engine(
+  result1 <- hrfals:::ls_svd_engine(
     X_list_proj = list(cond1 = X_design),
     Y_proj = matrix(Y1_noisy, ncol = 1),
     lambda_init = 1,
@@ -70,7 +70,7 @@ test_that("ls_svd_engine recovers correct HRF shape in simple case", {
   )
   
   # Test 2: Run ls_svd_engine on data generated with hrf2
-  result2 <- ls_svd_engine(
+  result2 <- hrfals:::ls_svd_engine(
     X_list_proj = list(cond1 = X_design),
     Y_proj = matrix(Y2_noisy, ncol = 1),
     lambda_init = 1,

@@ -1,11 +1,11 @@
 #' Estimate HRF for a target event term using CF-ALS
 #'
 #' High level wrapper around the CFALS engines operating on a single
-#' `event_term` within an `fmrireg::event_model`. Design matrices and
+#' `event_term` within an `fmridesign::event_model`. Design matrices and
 #' projection are handled by `create_cfals_design`.
 #'
-#' @param fmri_data_obj `fmrireg::fmri_dataset` or numeric BOLD matrix.
-#' @param fmrireg_event_model An `event_model` describing the full design.
+#' @param fmri_data_obj `fmridesign::fmri_dataset` or numeric BOLD matrix.
+#' @param fmridesign_event_model An `event_model` describing the full design.
 #' @param target_event_term_name Name of the event_term to estimate.
 #' @param hrf_basis_for_cfals An `HRF` object with `nbasis > 1`.
 #' @param confound_obj Optional confound matrix.
@@ -58,10 +58,11 @@
 #'   repeated HRF updates.
 #' @param hrf_shape_duration Duration in seconds for reconstructed HRF grid.
 #' @param hrf_shape_resolution Sampling resolution of the HRF grid.
+#' @param ... Additional arguments (currently unused).
 #' @return An `hrfals_fit` object.
 #' @export
 estimate_hrf_cfals <- function(fmri_data_obj,
-                               fmrireg_event_model,
+                               fmridesign_event_model,
                                target_event_term_name,
                                hrf_basis_for_cfals,
                                confound_obj = NULL,
@@ -84,12 +85,12 @@ estimate_hrf_cfals <- function(fmri_data_obj,
                                design_control = list(standardize_predictors = TRUE,
                                                      cache_design_blocks = TRUE),
                                hrf_shape_duration = attr(hrf_basis_for_cfals, "span"),
-                               hrf_shape_resolution = fmrireg_event_model$sampling_frame$TR[1],
+                               hrf_shape_resolution = fmridesign_event_model$sampling_frame$TR[1],
                                ...) {
   method <- match.arg(method)
 
   prep <- create_cfals_design(fmri_data_obj,
-                             fmrireg_event_model,
+                             fmridesign_event_model,
                              hrf_basis_for_cfals,
                              confound_obj = confound_obj,
                              baseline_model = baseline_model,
@@ -120,26 +121,27 @@ estimate_hrf_cfals <- function(fmri_data_obj,
     stop("R_mat must be 'identity', 'basis_default', or a numeric matrix")
   }
 
-  fit <- switch(method,
-    ls_svd_only = ls_svd_engine(Xp, Yp,
-                                lambda_init = lambda_init,
-                                Phi_recon_matrix = Phi,
-                                h_ref_shape_canonical = h_ref_shape_canonical),
-    ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
-                                     lambda_init = lambda_init,
-                                     lambda_b = lambda_b,
-                                     lambda_h = lambda_h,
-                                     lambda_joint = lambda_joint,
-                                     fullXtX_flag = fullXtX,
-                                     Phi_recon_matrix = Phi,
-                                     h_ref_shape_canonical = h_ref_shape_canonical,
-                                     R_mat = R_eff),
-   cf_als = cf_als_engine(Xp, Yp,
-                           lambda_b = lambda_b,
-                           lambda_h = lambda_h,
-                           lambda_joint = lambda_joint,
-                           lambda_s = lambda_s,
-                           laplacian_obj = laplacian_obj,
+	  fit <- switch(method,
+	    ls_svd_only = ls_svd_engine(Xp, Yp,
+	                                lambda_init = lambda_init,
+	                                Phi_recon_matrix = Phi,
+	                                h_ref_shape_canonical = h_ref_shape_canonical),
+	    ls_svd_1als = ls_svd_1als_engine(Xp, Yp,
+	                                     lambda_init = lambda_init,
+	                                     lambda_b = lambda_b,
+	                                     lambda_h = lambda_h,
+	                                     lambda_joint = lambda_joint,
+	                                     fullXtX_flag = fullXtX,
+	                                     Phi_recon_matrix = Phi,
+	                                     h_ref_shape_canonical = h_ref_shape_canonical,
+	                                     R_mat = R_eff),
+	   cf_als = cf_als_engine(Xp, Yp,
+	                           lambda_init = lambda_init,
+	                           lambda_b = lambda_b,
+	                           lambda_h = lambda_h,
+	                           lambda_joint = lambda_joint,
+	                           lambda_s = lambda_s,
+	                           laplacian_obj = laplacian_obj,
                            h_solver = h_solver,
                            cg_max_iter = cg_max_iter,
                            cg_tol = cg_tol,
@@ -167,13 +169,17 @@ estimate_hrf_cfals <- function(fmri_data_obj,
   }
   resids <- Yp - pred_p
 
-  SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
-  SSE <- colSums(resids^2)
-  r2 <- 1 - SSE / SST
+		  SST <- colSums((Yp - matrix(colMeans(Yp), n, v, TRUE))^2)
+		  SSE <- colSums(resids^2)
+		  r2 <- rep(NA_real_, v)
+		  scale <- colSums(Yp^2)
+		  sst_tol <- .Machine$double.eps * pmax(scale, 1)
+		  ok <- is.finite(SST) & SST > sst_tol
+		  r2[ok] <- 1 - SSE[ok] / SST[ok]
 
-  hrfals_fit(h_coeffs = fit$h,
-             beta_amps = fit$beta,
-             method = method,
+	  hrfals_fit(h_coeffs = fit$h,
+	             beta_amps = fit$beta,
+	             method = method,
              lambdas = c(init = lambda_init,
                          beta = lambda_b,
                          h = lambda_h,
@@ -199,9 +205,11 @@ estimate_hrf_cfals <- function(fmri_data_obj,
 #'
 #' @inheritParams estimate_hrf_cfals
 #' @param lambda_s_default Default spatial regularisation strength.
+#' @param ... Additional arguments passed to \code{estimate_hrf_cfals}.
+#' @return An `hrfals_fit` object with spatial regularization applied.
 #' @export
 estimate_hrf_spatial_cfals <- function(fmri_data_obj,
-                                       fmrireg_event_model,
+                                       fmridesign_event_model,
                                        target_event_term_name,
                                        hrf_basis_for_cfals,
                                        laplacian_obj,
@@ -212,11 +220,10 @@ estimate_hrf_spatial_cfals <- function(fmri_data_obj,
   }
   
   estimate_hrf_cfals(fmri_data_obj,
-                     fmrireg_event_model,
+                     fmridesign_event_model,
                      target_event_term_name,
                      hrf_basis_for_cfals,
                      laplacian_obj = laplacian_obj,
                      lambda_s = lambda_s_default,
                      ...)
 }
-

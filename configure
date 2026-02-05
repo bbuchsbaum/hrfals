@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+R_HOME="${R_HOME:-$(R RHOME)}"
+CXX=$("${R_HOME}/bin/R" CMD config CXX)
+
+NO_UNKNOWN_WARNING_OPTION=""
+case "$CXX" in
+  *clang*|*clang++*)
+    NO_UNKNOWN_WARNING_OPTION="-Wno-unknown-warning-option"
+    ;;
+esac
+
+sed -e "s|@NO_UNKNOWN_WARNING_OPTION@|$NO_UNKNOWN_WARNING_OPTION|g" \
+  src/Makevars.in > src/Makevars
+
+exit 0
+

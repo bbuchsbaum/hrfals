@@ -4,7 +4,14 @@
 \alias{autoplot.hrfals_fit}
 \title{Autoplot method for hrfals_fit objects}
 \usage{
-\method{autoplot}{hrfals_fit}(x, vox = 1, ...)
+\method{autoplot}{hrfals_fit}(object, vox = 1, ...)
+}
+\arguments{
+\item{object}{An `hrfals_fit` object.}
+
+\item{vox}{Voxel index to plot (default = 1).}
+
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
 A `ggplot` object.

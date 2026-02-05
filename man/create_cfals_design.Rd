@@ -2,7 +2,7 @@
 % Please edit documentation in R/cfals_design_utils_hrfals.R
 \name{create_cfals_design}
 \alias{create_cfals_design}
-\title{Create CFALS Design Matrices from fmrireg Objects}
+\title{Create CFALS Design Matrices from fmridesign Objects}
 \usage{
 create_cfals_design(
   fmri_data_obj,
@@ -18,7 +18,7 @@ create_cfals_design(
 \arguments{
 \item{fmri_data_obj}{An `fmri_dataset` or numeric matrix of BOLD data.}
 
-\item{event_model}{An `event_model` object from fmrireg.}
+\item{event_model}{An `event_model` object from fmridesign.}
 
 \item{hrf_basis}{An HRF basis object with `nbasis > 1`.}
 
@@ -48,7 +48,7 @@ List with projected design matrices, reconstruction info and
   scaling factors applied to each design block.
 }
 \description{
-This function leverages fmrireg's built-in design matrix creation and
+This function leverages fmridesign's built-in design matrix creation and
 HRF evaluation functionality to prepare inputs for CF-ALS estimation.
 It uses the existing `create_fmri_design` function and adds CFALS-specific
 processing.

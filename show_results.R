@@ -2,7 +2,7 @@
 
 # Show CF-ALS results after scale normalization fix
 devtools::load_all()
-library(fmrireg)
+library(fmridesign)
 library(hrfals)
 
 cat("=== CF-ALS Performance Results ===\n")
@@ -17,7 +17,7 @@ TR <- 2.0
 n_timepoints <- 80
 timegrid <- seq(0, (n_timepoints - 1) * TR, by = TR)
 
-hrf_shape <- fmrireg::HRF_SPMG1
+hrf_shape <- fmridesign::HRF_SPMG1
 amplitude1 <- 2.5
 amplitude2 <- 1.0
 true_ratio <- amplitude1 / amplitude2
@@ -25,13 +25,13 @@ true_ratio <- amplitude1 / amplitude2
 onsets_cond1 <- c(10, 50, 90)
 onsets_cond2 <- c(30, 70, 110)
 
-reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                           amplitude = amplitude1, duration = 0)
-reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                           amplitude = amplitude2, duration = 0)
 
-Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+Y2_clean <- fmridesign::evaluate(reg2, timegrid)
 if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
 if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
 
@@ -39,8 +39,8 @@ Y_combined <- Y1_clean + Y2_clean
 Y_noisy <- Y_combined + rnorm(n_timepoints, 0, 0.1 * sd(Y_combined))
 
 # Create design matrices
-hrf_basis <- fmrireg::HRF_FIR
-d <- fmrireg::nbasis(hrf_basis)
+hrf_basis <- fmridesign::HRF_FIR
+d <- fmridesign::nbasis(hrf_basis)
 
 neural_signal1 <- rep(0, n_timepoints)
 neural_signal2 <- rep(0, n_timepoints)
@@ -57,7 +57,7 @@ for (onset in onsets_cond2) {
 
 X_design1 <- matrix(0, n_timepoints, d)
 X_design2 <- matrix(0, n_timepoints, d)
-basis_vals <- fmrireg::evaluate(hrf_basis, timegrid)
+basis_vals <- fmridesign::evaluate(hrf_basis, timegrid)
 
 for (j in seq_len(d)) {
   if (is.matrix(basis_vals)) {
@@ -70,7 +70,7 @@ for (j in seq_len(d)) {
 }
 
 Phi_recon <- hrfals::reconstruction_matrix(hrf_basis, timegrid)
-h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+h_ref_canonical <- fmridesign::evaluate(fmridesign::HRF_SPMG1, timegrid)
 if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
 h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
 
@@ -157,13 +157,13 @@ onsets_cond2 <- sort(runif(n_events_per_condition, 15, (n_timepoints-15)*TR))
 onsets_cond1 <- onsets_cond1[c(TRUE, diff(onsets_cond1) > 8)]
 onsets_cond2 <- onsets_cond2[c(TRUE, diff(onsets_cond2) > 8)]
 
-reg1 <- fmrireg::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
+reg1 <- fmridesign::regressor(onsets = onsets_cond1, hrf = hrf_shape, 
                           amplitude = amplitude1, duration = 0)
-reg2 <- fmrireg::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
+reg2 <- fmridesign::regressor(onsets = onsets_cond2, hrf = hrf_shape, 
                           amplitude = amplitude2, duration = 0)
 
-Y1_clean <- fmrireg::evaluate(reg1, timegrid)
-Y2_clean <- fmrireg::evaluate(reg2, timegrid)
+Y1_clean <- fmridesign::evaluate(reg1, timegrid)
+Y2_clean <- fmridesign::evaluate(reg2, timegrid)
 if (is.matrix(Y1_clean)) Y1_clean <- Y1_clean[, 1]
 if (is.matrix(Y2_clean)) Y2_clean <- Y2_clean[, 1]
 
@@ -199,7 +199,7 @@ for (j in seq_len(d)) {
 
 # Update reconstruction matrix
 Phi_recon <- hrfals::reconstruction_matrix(hrf_basis, timegrid)
-h_ref_canonical <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+h_ref_canonical <- fmridesign::evaluate(fmridesign::HRF_SPMG1, timegrid)
 if (is.matrix(h_ref_canonical)) h_ref_canonical <- h_ref_canonical[, 1]
 h_ref_canonical <- h_ref_canonical / max(abs(h_ref_canonical))
 
@@ -319,7 +319,7 @@ cat("\n📊 TEST 4: HRF Shape Recovery\n")
 cat("Testing how well each method recovers the true HRF shape\n")
 
 # Generate true HRF shape for comparison
-true_hrf <- fmrireg::evaluate(fmrireg::HRF_SPMG1, timegrid)
+true_hrf <- fmridesign::evaluate(fmridesign::HRF_SPMG1, timegrid)
 if (is.matrix(true_hrf)) true_hrf <- true_hrf[, 1]
 true_hrf <- true_hrf / max(abs(true_hrf))  # Normalize to unit peak
 

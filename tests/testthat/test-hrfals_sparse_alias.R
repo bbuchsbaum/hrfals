@@ -1,6 +1,6 @@
 context("hrfals_sparse alias")
 
-library(fmrireg)
+library(fmridesign)
 
 # simple check that hrfals_sparse forwards arguments to hrfals with defaults
 

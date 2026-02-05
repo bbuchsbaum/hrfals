@@ -1,0 +1,116 @@
+---
+title: "Trial-wise Beta Series with CF-ALS"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Trial-wise Beta Series with CF-ALS}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(123)
+```
+
+After estimating shared hemodynamic response functions (HRFs) with
+`hrfals()`, trial-wise beta series are often required for connectivity
+or multivariate analyses.  The `hrfals_lss()` convenience wrapper builds
+Least-Squares Separate (LSS) regressors that respect the HRFs recovered
+by CF-ALS.  This vignette illustrates the workflow end-to-end.
+
+## Generate an event model and data
+
+The setup mirrors the introduction vignette but focuses on the
+integration with the LSS solver.  We simulate a short run with two
+conditions, estimate CF-ALS, and then compute a beta per trial.
+
+```{r}
+library(hrfals)
+library(fmridesign)
+
+TR <- 1
+n_time <- 80
+sf <- sampling_frame(blocklens = n_time, TR = TR)
+
+events <- data.frame(
+  onset = c(4, 16, 30, 45, 58),
+  condition = factor(c("cue", "stim", "cue", "stim", "cue")),
+  trial_id = factor(paste0("trial", seq_len(5))),
+  block = 1
+)
+
+emod <- event_model(
+  onset ~ hrf(condition),
+  data = events,
+  block = ~ block,
+  sampling_frame = sf
+)
+
+emod_trials <- event_model(
+  onset ~ hrf(trial_id),
+  data = events,
+  block = ~ block,
+  sampling_frame = sf
+)
+
+hrf_basis <- fmrihrf::HRF_SPMG3
+
+# simulate a tiny BOLD series with two voxels
+h_coeffs <- c(1.3, 0.5, -0.2)
+design <- create_fmri_design(emod, hrf_basis)
+
+cond_signal <- vapply(design$X_list, function(X) drop(X %*% h_coeffs), numeric(n_time))
+dimnames(cond_signal) <- list(NULL, names(design$X_list))
+
+beta_true <- matrix(c(1.0, -0.5,
+                      0.7, -0.3),
+                    nrow = 2,
+                    dimnames = list(names(design$X_list), c("vox1", "vox2")))
+
+Y <- cond_signal %*% beta_true + matrix(rnorm(n_time * 2, sd = 0.2), n_time, 2)
+colnames(Y) <- c("vox1", "vox2")
+```
+
+## Estimate shared HRFs with CF-ALS
+
+```{r}
+cf_fit <- hrfals(
+  fmri_data_obj = Y,
+  event_model = emod,
+  hrf_basis = hrf_basis,
+  lam_beta = 5,
+  lam_h = 1,
+  max_alt = 1
+)
+
+cf_fit
+```
+
+The `cf_fit` object stores the recovered HRF coefficients and the basis
+used.  `hrfals_lss()` reuses that information to construct
+trial-specific regressors before running the fast LSS kernels.
+
+## Trial-wise beta estimation
+
+```{r}
+beta_series <- hrfals_lss(
+  cf_fit = cf_fit,
+  events = emod_trials,
+  fmri_data_obj = Y
+)
+
+dim(beta_series$betas)
+```
+
+The result is a `fastlss_fit` object with a trial-by-voxel coefficient
+matrix.  Inspecting a few rows confirms that one coefficient was
+estimated for each individual onset.
+
+```{r}
+head(beta_series$betas)
+```
+
+For designs with multiple HRFs (e.g. voxel-specific HRFs) the function
+switches to the `fastlss_voxel()` kernel automatically.  You can also
+request that explicitly via `mode = "shared"` or `mode = "voxel"` when
+fine-tuning the workflow.

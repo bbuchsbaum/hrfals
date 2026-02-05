@@ -11,13 +11,14 @@
 #' @return Matrix of the same dimensions as \code{C} containing residualized
 #'   regressors.
 #' @examples
+#' set.seed(1)
 #' n <- 20; m <- 5; T <- 10
 #' A <- matrix(rnorm(n * m), n, m)
 #' C <- matrix(rnorm(n * T), n, T)
 #' V1 <- woodbury_residualize(C, A)
 #' # explicit projection for comparison
 #' AtA <- crossprod(A)
-#' P <- cholSolve(AtA, crossprod(A, C))
+#' P <- solve(AtA, crossprod(A, C))
 #' V2 <- C - A %*% P
 #' stopifnot(max(abs(V1 - V2)) < 1e-12)
 #' @export

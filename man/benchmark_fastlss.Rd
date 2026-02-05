@@ -30,3 +30,4 @@ implementation in \code{fastlss_shared()} to a naive R reference.
 The function also supports basic scaling tests over different
 dataset sizes and reports approximate memory usage.
 }
+\keyword{internal}

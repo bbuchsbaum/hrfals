@@ -1,6 +1,6 @@
 context("sparse CFALS core functionality")
 
-library(fmrireg)
+library(fmridesign)
 
 # helper to simulate data with many continuous predictors and sparse betas
 simulate_sparse_predictor_data <- function(n = 40, d = 3, k = 5,

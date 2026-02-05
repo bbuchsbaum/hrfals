@@ -1,4 +1,4 @@
-library(fmrireg)
+library(fmridesign)
 
 # Helper function for convolution
 convolve_design <- function(neural_signal, timegrid, hrf_func) {
@@ -27,7 +27,7 @@ benchmark_cfals <- function() {
   n_trials <- 30                # per condition (increased for better estimation)
   TR       <- 2
   
-  # Use fmrireg simulation but with proper structure
+  # Use fmridesign simulation but with proper structure
   set.seed(1)
   design <- simulate_simple_dataset(ncond = n_cond,
                                     nreps  = n_trials,
@@ -142,7 +142,7 @@ benchmark_cfals <- function() {
   # ----- 3. Run hrfals and baselines -----
   basis_cfals <- HRF_BSPLINE                   # 12-basis FIR
   
-  # Create proper event model for fmrireg
+  # Create proper event model for fmridesign
   sf <- sampling_frame(blocklens = length(bold_timegrid), TR = TR)
   events_df <- data.frame(
     onset = on,
@@ -155,7 +155,7 @@ benchmark_cfals <- function() {
   runtime <- system.time({
     cf_fit <- estimate_hrf_cfals(
       fmri_data_obj          = matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy)),
-      fmrireg_event_model    = model_obj,
+      fmridesign_event_model = model_obj,
       target_event_term_name = "hrf(condition)",
       hrf_basis_for_cfals    = basis_cfals,
       method    = "cf_als",                 # Try pure CF-ALS method

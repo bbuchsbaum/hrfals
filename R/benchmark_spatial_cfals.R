@@ -13,7 +13,7 @@
 #' @param n Number of time points per voxel.
 #' @return Data frame with columns `v`, `lambda_s`, `solver`, `runtime`,
 #'   and `h_rmse`.
-#' @export
+#' @keywords internal
 benchmark_spatial_cfals <- function(lambda_s_values = c(0, 0.05, 0.1),
                                     solver_options = c("direct", "cg"),
                                     v_seq = c(20, 40),
@@ -23,15 +23,15 @@ benchmark_spatial_cfals <- function(lambda_s_values = c(0, 0.05, 0.1),
   results <- data.frame()
   for (v in v_seq) {
     set.seed(123 + v)
-    h_true <- matrix(rnorm(d * v), d, v)
-    beta_true <- matrix(rnorm(k * v), k, v)
-    X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * d), n, d))
+    h_true <- matrix(stats::rnorm(d * v), d, v)
+    beta_true <- matrix(stats::rnorm(k * v), k, v)
+    X_list <- lapply(seq_len(k), function(i) matrix(stats::rnorm(n * d), n, d))
     Y <- matrix(0, n, v)
     for (c in seq_len(k)) {
       Y <- Y + (X_list[[c]] %*% h_true) *
         matrix(rep(beta_true[c, ], each = n), n, v)
     }
-    Y <- Y + matrix(rnorm(n * v, sd = 0.1), n, v)
+    Y <- Y + matrix(stats::rnorm(n * v, sd = 0.1), n, v)
     Phi <- diag(d)
     href <- rep(1, d)
     mask <- array(1, dim = c(v, 1, 1))

@@ -2,8 +2,8 @@
 title: "Estimating Shared HRFs with Many Continuous Predictors"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Many Continuous Predictors}
-  %\VignetteEngine{rmarkdown::html_vignette}
+  %\VignetteIndexEntry{Estimating Shared HRFs with Many Continuous Predictors}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -19,11 +19,11 @@ with a large number of continuous predictors.  The helper function
 
 The code below simulates a small data set with many predictors and then
 fits the model using `hrfals_sparse()`.  The same workflow applies when
-using real fMRI data and a design created with `fmrireg::event_model()`.
+using real fMRI data and a design created with `fmridesign::event_model()`.
 
 ```{r eval=FALSE}
 library(hrfals)
-library(fmrireg)
+library(fmridesign)
 
 n  <- 60   # time points
 k  <- 100  # number of continuous predictors
@@ -69,4 +69,3 @@ The estimated HRF and sparse beta weights can be inspected from the
 returned `fit` object.  When working with real fMRI data you would
 construct `X_list` via `create_cfals_design()` which supports
 splitting a single `Ident` term into multiple predictor blocks.
-

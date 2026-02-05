@@ -1,6 +1,6 @@
 context("estimate_hrf_cfals wrapper")
 
-library(fmrireg)
+library(fmridesign)
 
 simulate_cfals_wrapper_data <- function(hrf_basis, noise_sd = 0.05, signal_scale = 1) {
   sf <- sampling_frame(blocklens = 60, TR = 1)
@@ -40,7 +40,7 @@ test_that("estimate_hrf_cfals returns expected dimensions", {
   fit <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)", fmrihrf::HRF_SPMG3,
                             lambda_b = 0.1, lambda_h = 0.1)
   expect_s3_class(fit, "hrfals_fit")
-  expect_equal(dim(fit$h_coeffs), c(nbasis(fmrihrf::HRF_SPMG3), ncol(dat$Y)))
+  expect_equal(dim(fit$h_coeffs), c(fmrihrf::nbasis(fmrihrf::HRF_SPMG3), ncol(dat$Y)))
   expect_equal(dim(fit$beta_amps), c(2, ncol(dat$Y)))
   expect_equal(rownames(fit$beta_amps), c("conditionA", "conditionB"))
   expect_equal(fit$target_event_term_name, "hrf(condition)")
@@ -60,7 +60,7 @@ test_that("estimate_hrf_cfals matches direct ls_svd_1als", {
   dat <- simulate_cfals_wrapper_data(fmrihrf::HRF_SPMG3)
   prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
-  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+  direct <- hrfals:::ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
@@ -162,7 +162,7 @@ test_that("R_mat = 'basis_default' uses basis penalty matrix", {
   prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
   Rb <- fmrihrf::penalty_matrix(fmrihrf::HRF_SPMG3)
-  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+  direct <- hrfals:::ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
@@ -187,7 +187,7 @@ test_that("R_mat custom matrix is used", {
   prep <- create_cfals_design(dat$Y, dat$event_model, fmrihrf::HRF_SPMG3,
                               design_control = list(standardize_predictors = FALSE))
   R_custom <- diag(prep$d_basis_dim) * 2
-  direct <- ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
+  direct <- hrfals:::ls_svd_1als_engine(prep$X_list_proj, prep$Y_proj,
                                lambda_init = 0,
                                lambda_b = 0.1,
                                lambda_h = 0.1,
@@ -243,14 +243,14 @@ simulate_multiterm_data <- function(hrf_basis, noise_sd = 0.05) {
 
 
 test_that("estimate_hrf_cfals integrates across HRF bases and terms", {
-  bases <- list(fmrihrf::HRF_SPMG3, gen_hrf(hrf_bspline, N=4))
+  bases <- list(fmrihrf::HRF_SPMG3, fmrihrf::hrf_bspline_generator(nbasis=4))
   for (b in bases) {
     dat <- simulate_multiterm_data(b)
     for (term in c("hrf(term1)", "hrf(term2)")) {
       fit <- estimate_hrf_cfals(dat$Y, dat$event_model, term, b,
                                 lambda_b = 0.1, lambda_h = 0.1)
       expect_s3_class(fit, "hrfals_fit")
-      expect_equal(nrow(fit$h_coeffs), nbasis(b))
+      expect_equal(nrow(fit$h_coeffs), fmrihrf::nbasis(b))
       expect_equal(fit$target_event_term_name, term)
     }
   }
@@ -265,7 +265,7 @@ test_that("R_mat options work", {
                                   R_mat = "basis_default")
   expect_s3_class(fit_basis, "hrfals_fit")
 
-  Rm <- diag(nbasis(fmrihrf::HRF_SPMG3))
+  Rm <- diag(fmrihrf::nbasis(fmrihrf::HRF_SPMG3))
   fit_custom <- estimate_hrf_cfals(dat$Y, dat$event_model, "hrf(condition)",
                                    fmrihrf::HRF_SPMG3,
                                    lambda_b = 0.1, lambda_h = 0.1,

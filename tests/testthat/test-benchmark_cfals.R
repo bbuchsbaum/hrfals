@@ -1,6 +1,6 @@
 context("CF-ALS benchmark performance")
 
-library(fmrireg)
+library(fmridesign)
 
 # load helper functions for simulation if available
 if (exists("source_test_helpers")) testthat::source_test_helpers()
@@ -32,7 +32,7 @@ benchmark_cfals <- function() {
   n_trials <- 30                # per condition (increased for better estimation)
   TR       <- 2
   
-  # Use fmrireg simulation but with proper structure
+  # Use fmridesign simulation but with proper structure
   set.seed(1)
   design <- simulate_simple_dataset(ncond = n_cond,
                                     nreps  = n_trials,
@@ -142,7 +142,7 @@ benchmark_cfals <- function() {
   # ----- 3. Run hrfals and baselines -----
   basis_cfals <- fmrihrf::HRF_FIR                   # 12-basis FIR
   
-  # Create proper event model for fmrireg
+  # Create proper event model for fmridesign
   sf <- sampling_frame(blocklens = length(bold_timegrid), TR = TR)
   events_df <- data.frame(
     onset = on,
@@ -154,8 +154,8 @@ benchmark_cfals <- function() {
 
   runtime <- system.time({
     cf_fit <- estimate_hrf_cfals(
-      fmri_data_obj          = matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy)),
-      fmrireg_event_model    = model_obj,
+      fmri_data_obj          = fmridataset::matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy)),
+      fmridesign_event_model = model_obj,
       target_event_term_name = "hrf(condition)",
       hrf_basis_for_cfals    = basis_cfals,
       method    = "ls_svd_1als",            # Use LS+SVD+ALS instead of pure CF-ALS
@@ -167,13 +167,13 @@ benchmark_cfals <- function() {
 
   # ----- 3b. voxel-wise FIR GLM baseline -----
   glm_fit <- tryCatch({
-    fmrireg::glm_ols(matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy), event_table=events_df),
+    fmridesign::glm_ols(fmridataset::matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy), event_table=events_df),
                      model_obj, basis_cfals)
   }, error = function(e) NULL)
 
   # ----- 3c. LSS beta-series baseline -----
   lss_fit <- tryCatch({
-    fmrireg::glm_lss(matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy), event_table=events_df),
+    fmrireg::glm_lss(fmridataset::matrix_dataset(Y_noisy, TR = TR, run_length = nrow(Y_noisy), event_table=events_df),
                      model_obj, basis_cfals)
   }, error = function(e) NULL)
 
@@ -407,9 +407,9 @@ visualize_hrf_performance <- function(result) {
     if (requireNamespace("graphics", quietly = TRUE)) {
       cat("\nGenerating HRF comparison plots...\n")
       
-      # Create plots directory if it doesn't exist
-      plots_dir <- "benchmark_plots"
-      if (!dir.exists(plots_dir)) dir.create(plots_dir)
+      # Write plots to a temp directory so tests do not modify the working tree.
+      plots_dir <- file.path(tempdir(), "hrfals-benchmark-plots")
+      if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
       
       # Plot 1: HRF comparison for representative voxels
       png(file.path(plots_dir, "hrf_comparison.png"), width = 1200, height = 800)
@@ -514,6 +514,8 @@ visualize_hrf_performance <- function(result) {
 }
 
 test_that("CF-ALS benchmark meets expectations", {
+  skip_if_not_installed("fmridataset")
+
   res <- benchmark_cfals()
   
   # Visualize HRF reconstruction performance

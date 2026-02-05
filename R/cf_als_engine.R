@@ -54,7 +54,7 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, XtX_diag,
   lhs_list
 }
 
-#' Confound-Free ALS HRF Estimation Engine
+#' Confound-Adjusted ALS HRF Estimation Engine
 #'
 #' Internal helper implementing the CF-ALS algorithm described in
 #' `data-raw/CFALS_proposal.md`. Inputs should already be projected
@@ -93,6 +93,7 @@ make_lhs_block_list <- function(XtX_list, XtX_full_list, XtX_diag,
 #'   of alternating updates performed.
 #' @keywords internal
 #' @importFrom Matrix forceSymmetric
+#' @importFrom stats coef
 #' @noRd
 cf_als_engine <- function(X_list_proj, Y_proj,
                           lambda_b = 10,
@@ -255,18 +256,73 @@ cf_als_engine <- function(X_list_proj, Y_proj,
     for (vx in seq_len(v)) {
       h_vx <- h_current[, vx]
 
-      if (beta_penalty$l1 > 0) {
-        Xh_mat <- vapply(seq_len(k), function(c) Xh_list[[c]][, vx], numeric(n))
-        y_vx <- Y_proj[, vx]
-        fit <- glmnet::glmnet(x = Xh_mat, y = y_vx,
-                              alpha = beta_penalty$alpha,
-                              lambda = beta_penalty$l1,
-                              standardize = FALSE,
-                              intercept = FALSE)
-        b_current[, vx] <- as.numeric(coef(fit, s = beta_penalty$l1))[-1]
-      } else {
-        DhTy_vx <- DhTy_mat[, vx]
-        G_vx <- G_array[, , vx] + lambda_joint * diag(k)
+	      if (beta_penalty$l1 > 0) {
+	        Xh_mat <- vapply(seq_len(k), function(c) Xh_list[[c]][, vx], numeric(n))
+	        y_vx <- Y_proj[, vx]
+	        fit <- tryCatch(
+	          glmnet::glmnet(
+            x = Xh_mat,
+            y = y_vx,
+            alpha = beta_penalty$alpha,
+            lambda = beta_penalty$l1,
+            standardize = FALSE,
+            intercept = FALSE
+          ),
+          error = function(e) e
+        )
+        if (inherits(fit, "error")) {
+          warning(sprintf(
+            "glmnet failed for voxel %d; falling back to ridge beta update (%s).",
+            vx, conditionMessage(fit)
+          ), call. = FALSE)
+          DhTy_vx <- DhTy_mat[, vx]
+          G_vx <- G_array[, , vx] + lambda_joint * diag(k)
+          ridge <- max(lambda_b, 0) + max(lambda_joint, 0)
+          b_current[, vx] <- cholSolve(G_vx + max(ridge, epsilon_scale) * diag(k),
+                                       DhTy_vx,
+                                       eps = max(epsilon_svd, epsilon_scale))
+        } else {
+          beta_hat <- tryCatch(coef(fit, s = beta_penalty$l1),
+                               error = function(e) e)
+	          if (inherits(beta_hat, "error")) {
+	            warning(sprintf(
+	              "glmnet coef() failed for voxel %d; falling back to ridge beta update (%s).",
+	              vx, conditionMessage(beta_hat)
+	            ), call. = FALSE)
+	            DhTy_vx <- DhTy_mat[, vx]
+	            G_vx <- G_array[, , vx] + lambda_joint * diag(k)
+	            ridge <- max(lambda_b, 0) + max(lambda_joint, 0)
+	            b_current[, vx] <- cholSolve(G_vx + max(ridge, epsilon_scale) * diag(k),
+	                                         DhTy_vx,
+	                                         eps = max(epsilon_svd, epsilon_scale))
+	          } else {
+	            beta_hat_vec <- as.numeric(beta_hat)
+	            beta_hat_names <- rownames(beta_hat)
+	            if (!is.null(beta_hat_names) && length(beta_hat_names) == length(beta_hat_vec) &&
+	                identical(beta_hat_names[[1]], "(Intercept)")) {
+	              beta_hat_vec <- beta_hat_vec[-1]
+	            } else if (length(beta_hat_vec) == (k + 1)) {
+	              beta_hat_vec <- beta_hat_vec[-1]
+	            }
+	            if (length(beta_hat_vec) != k || anyNA(beta_hat_vec) || any(!is.finite(beta_hat_vec))) {
+	              warning(sprintf(
+	                "glmnet returned invalid coefficient vector for voxel %d; falling back to ridge beta update.",
+	                vx
+	              ), call. = FALSE)
+	              DhTy_vx <- DhTy_mat[, vx]
+	              G_vx <- G_array[, , vx] + lambda_joint * diag(k)
+	              ridge <- max(lambda_b, 0) + max(lambda_joint, 0)
+	              b_current[, vx] <- cholSolve(G_vx + max(ridge, epsilon_scale) * diag(k),
+	                                           DhTy_vx,
+	                                           eps = max(epsilon_svd, epsilon_scale))
+	            } else {
+	              b_current[, vx] <- beta_hat_vec
+	            }
+	          }
+	        }
+	      } else {
+	        DhTy_vx <- DhTy_mat[, vx]
+	        G_vx <- G_array[, , vx] + lambda_joint * diag(k)
         b_current[, vx] <- cholSolve(G_vx + lambda_b_eff * diag(k), DhTy_vx,
                                      eps = max(epsilon_svd, epsilon_scale))
       }
@@ -376,4 +432,3 @@ cf_als_engine <- function(X_list_proj, Y_proj,
   attr(result$h, "objective_trace") <- obj_trace[seq_len(iter_final)]
   list(h = result$h, beta = result$beta)
 }
-

@@ -1,13 +1,14 @@
 #' Beta-series estimation using fast LSS
 #'
-#' Builds trial regressors from a CF-ALS fit and event information and
+#' Builds trial regressors from a CF-ALS (Confound-Adjusted Alternating Least Squares)
+#' fit and event information and
 #' calls \code{fastlss_shared()} or \code{fastlss_voxel()} as appropriate.
 #'
 #' @param cf_fit An object of class `hrfals_fit` as returned by
-#'   [hrfals()] or [fmrireg_cfals()].
+#'   [hrfals()] (or the deprecated alias [fmrireg_cfals()]).
 #' @param events A `data.frame` with onset information or an
-#'   `fmrireg::event_model`.
-#' @param fmri_data_obj BOLD data matrix or `fmrireg::fmri_dataset`
+#'   `fmridesign::event_model`.
+#' @param fmri_data_obj BOLD data matrix or `fmridesign::fmri_dataset`
 #'   matching the data used for CF-ALS.
 #' @param confound_obj Optional confound matrix with the same number of
 #'   rows as `fmri_data_obj`.
@@ -39,10 +40,10 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
     sframe <- if (inherits(fmri_data_obj, "fmri_dataset"))
       fmri_data_obj$sampling_frame
     else
-      fmrireg::sampling_frame(nrow(fmri_data_obj),
+      fmridesign::sampling_frame(nrow(fmri_data_obj),
                               TR = attr(fmri_data_obj, "TR")[1])
     block_formula <- if ("block" %in% names(events)) ~ block else NULL
-    event_model <- fmrireg::event_model(onset ~ hrf(condition),
+    event_model <- fmridesign::event_model(onset ~ hrf(condition),
                                         data = events,
                                         block = block_formula,
                                         sampling_frame = sframe)
@@ -50,9 +51,13 @@ hrfals_lss <- function(cf_fit, events, fmri_data_obj,
     stop("'events' must be a data.frame or an 'event_model'")
   }
 
-  basis <- cf_fit$fmrireg_hrf_basis_used
-  if (is.null(basis))
-    stop("cf_fit must contain 'fmrireg_hrf_basis_used'")
+  basis <- cf_fit$hrf_basis_used
+  if (is.null(basis)) {
+    basis <- cf_fit$fmrireg_hrf_basis_used
+  }
+  if (is.null(basis)) {
+    stop("cf_fit must contain 'hrf_basis_used'")
+  }
 
   design <- create_cfals_design(fmri_data_obj, event_model, basis,
                                 confound_obj = confound_obj,

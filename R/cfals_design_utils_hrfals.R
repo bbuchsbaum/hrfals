@@ -28,15 +28,15 @@ convolve_timeseries_with_single_basis <- function(raw_timeseries,
   conv_full[seq_along(raw_timeseries)]
 }
 
-#' Create CFALS Design Matrices from fmrireg Objects
+#' Create CFALS Design Matrices from fmridesign Objects
 #'
-#' This function leverages fmrireg's built-in design matrix creation and
+#' This function leverages fmridesign's built-in design matrix creation and
 #' HRF evaluation functionality to prepare inputs for CF-ALS estimation.
 #' It uses the existing `create_fmri_design` function and adds CFALS-specific
 #' processing.
 #'
 #' @param fmri_data_obj An `fmri_dataset` or numeric matrix of BOLD data.
-#' @param event_model An `event_model` object from fmrireg.
+#' @param event_model An `event_model` object from fmridesign.
 #' @param hrf_basis An HRF basis object with `nbasis > 1`.
 #' @param confound_obj Optional confound matrix.
 #' @param baseline_model Optional baseline model whose design matrix will
@@ -69,7 +69,7 @@ create_cfals_design <- function(fmri_data_obj,
   
   # Extract BOLD data matrix
   if (inherits(fmri_data_obj, "fmri_dataset")) {
-    Y_raw <- fmrireg::get_data_matrix(fmri_data_obj)
+    Y_raw <- fmridataset::get_data_matrix(fmri_data_obj)
   } else if (is.matrix(fmri_data_obj)) {
     Y_raw <- fmri_data_obj
   } else {
@@ -82,7 +82,7 @@ create_cfals_design <- function(fmri_data_obj,
   # optional baseline design matrix
   baseline_mat <- NULL
   if (!is.null(baseline_model)) {
-    baseline_mat <- fmrireg::design_matrix(baseline_model)
+    baseline_mat <- fmridesign::design_matrix(baseline_model)
     if (nrow(baseline_mat) != n_timepoints) {
       stop("baseline_model design matrix has incorrect number of rows")
     }
@@ -111,7 +111,27 @@ create_cfals_design <- function(fmri_data_obj,
   
   X_list_raw <- design_info$X_list
   k_conditions <- design_info$k
-  Phi_recon_matrix <- design_info$Phi
+  if (length(X_list_raw) > 0) {
+    bad_dims <- vapply(X_list_raw, function(X) nrow(X) != n_timepoints, logical(1))
+    if (any(bad_dims)) {
+      stop("Design matrices from event_model do not match nrow(fmri_data_obj); check sampling_frame/run length.")
+    }
+  }
+
+  if (!is.numeric(hrf_shape_duration_sec) || length(hrf_shape_duration_sec) != 1 ||
+      !is.finite(hrf_shape_duration_sec) || hrf_shape_duration_sec <= 0) {
+    stop("hrf_shape_duration_sec must be a positive finite scalar")
+  }
+  if (!is.numeric(hrf_shape_sample_res_sec) || length(hrf_shape_sample_res_sec) != 1 ||
+      !is.finite(hrf_shape_sample_res_sec) || hrf_shape_sample_res_sec <= 0) {
+    stop("hrf_shape_sample_res_sec must be a positive finite scalar")
+  }
+  recon_grid <- seq(0, hrf_shape_duration_sec, by = hrf_shape_sample_res_sec)
+  if (length(recon_grid) < 2) {
+    stop("Reconstruction grid too small; increase hrf_shape_duration_sec or decrease hrf_shape_sample_res_sec")
+  }
+
+  Phi_recon_matrix <- reconstruction_matrix(hrf_basis, recon_grid)
   
   # Handle missing data in design matrices
   if (length(bad_row_idx) > 0) {
@@ -128,9 +148,12 @@ create_cfals_design <- function(fmri_data_obj,
     stop("No estimable conditions found in event model")
   }
 
-  # Create canonical reference HRF using the same grid as the reconstruction matrix
-  # This ensures consistency between h_ref_shape_canonical and Phi_recon_matrix
-  h_ref_shape_canonical <- design_info$h_ref_shape_norm
+  h_ref_shape_canonical <- as.numeric(fmrihrf::evaluate(fmrihrf::HRF_SPMG1, recon_grid))
+  max_abs_ref <- max(abs(h_ref_shape_canonical))
+  if (!is.finite(max_abs_ref) || max_abs_ref <= 0) {
+    stop("Failed to construct canonical HRF reference on reconstruction grid")
+  }
+  h_ref_shape_canonical <- h_ref_shape_canonical / max_abs_ref
 
   # combine baseline model with confounds if supplied
   if (!is.null(baseline_mat)) {
@@ -167,6 +190,8 @@ create_cfals_design <- function(fmri_data_obj,
 
   predictor_means <- rep(0, length(X_list_proj))
   predictor_sds <- rep(1, length(X_list_proj))
+  names(predictor_means) <- names(X_list_proj)
+  names(predictor_sds) <- names(X_list_proj)
   if (isTRUE(design_control$standardize_predictors)) {
     for (i in seq_along(X_list_proj)) {
       mu_i <- mean(X_list_proj[[i]], na.rm = TRUE)
@@ -194,7 +219,7 @@ create_cfals_design <- function(fmri_data_obj,
     k_conditions = k_conditions,
     Phi_recon_matrix = Phi_recon_matrix,
     h_ref_shape_canonical = h_ref_shape_canonical,
-    h_ref_shape_norm = design_info$h_ref_shape_norm,
+    h_ref_shape_norm = h_ref_shape_canonical,
     n_timepoints = n_timepoints,
     v_voxels = v_voxels,
     bad_row_idx = bad_row_idx,
@@ -212,7 +237,7 @@ create_cfals_design <- function(fmri_data_obj,
   )
 }
 
-#' Create CFALS Design from fmrireg Model
+#' Create CFALS Design from fmridesign Model
 #'
 #' @description
 #' This helper previously attempted to build CFALS design matrices directly
@@ -236,4 +261,3 @@ prepare_cfals_inputs_from_fmrireg_term <- function(...) {
               msg = "prepare_cfals_inputs_from_fmrireg_term is deprecated. Use create_cfals_design instead.")
   create_cfals_design(...)
 }
-

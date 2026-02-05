@@ -1,7 +1,7 @@
 
 ---
 
-**Final Proposal (v3): `fmrireg::fit_hrf_lwu` – Ultra-Fast, Voxel-Wise LWU-HRF Parameter Estimation with Uncertainty, Adaptive Seeding, and Tiered Refinement**
+**Final Proposal (v3): `fmridesign::fit_hrf_lwu` – Ultra-Fast, Voxel-Wise LWU-HRF Parameter Estimation with Uncertainty, Adaptive Seeding, and Tiered Refinement**
 
 **1. Core Philosophy & Goals:** (As per previous proposal: Efficiency, Sensitivity, Uncertainty, Robustness, Interpretability, R-Native)
 
@@ -9,22 +9,22 @@
 
 The method fits the 3-parameter Lag-Width-Undershoot (LWU) HRF model voxel-wise by linearizing the problem around progressively refined and potentially spatially-varying expansion points \(\theta_0\).
 
-**2.1 The Lag-Width-Undershoot (LWU) HRF Model (`fmrireg::hrf_lwu`):** (As defined in previous review)
+**2.1 The Lag-Width-Undershoot (LWU) HRF Model (`fmridesign::hrf_lwu`):** (As defined in previous review)
     *   \(h(t;\,\tau,\sigma,\rho)= e^{-\frac{(t-\tau)^2}{2\sigma^{2}}} - \rho\,e^{-\frac{\bigl(t-\tau-2\sigma\bigr)^2}{2(1.6\sigma)^{2}}}\)
     *   Parameters \(\theta = (\tau, \sigma, \rho)\).
     *   `normalise = c("height", "area", "none")` argument.
     *   Safety bounds: `sigma > 0.05`, `0 <= rho <= 1.5`.
 
-**2.2 HRF Basis for Taylor Expansion (`fmrireg::hrf_basis_lwu`):** (As defined in previous review)
+**2.2 HRF Basis for Taylor Expansion (`fmridesign::hrf_basis_lwu`):** (As defined in previous review)
     *   For a given \(\theta_0\), constructs \(X_{basis}(\theta_0) = [h_0(t), \partial_\tau h_0(t), \partial_\sigma h_0(t), \partial_\rho h_0(t)] \in \mathbb{R}^{T \times 4}\).
     *   `normalise_primary` argument controls normalization of \(h_0(t)\) column. For Taylor expansion, `normalise_primary = "none"` is used for all basis columns when constructing the \(T \times 4\) design matrix for the linear fit.
 
-**2.3 Algorithm: Main Function `fmrireg::fit_hrf_lwu`**
+**2.3 Algorithm: Main Function `fmridesign::fit_hrf_lwu`**
 
 **Inputs:**
 *   `Y4d_neuroim`: `neuroim2::NeuroVec` or path to NIfTI (input BOLD data, \(T \times V_{brain}\)).
 *   `scan_times`: Numeric vector of scan acquisition times \(t\).
-*   `event_model_for_residuals` (optional): `fmrireg::event_model`. If provided, HRF is fit to residuals of `Y4d_neuroim ~ event_model`. Default: `NULL` (fit to `Y4d_neuroim` directly, assuming it's suitably preprocessed or represents event-locked averages/epochs).
+*   `event_model_for_residuals` (optional): `fmridesign::event_model`. If provided, HRF is fit to residuals of `Y4d_neuroim ~ event_model`. Default: `NULL` (fit to `Y4d_neuroim` directly, assuming it's suitably preprocessed or represents event-locked averages/epochs).
 *   `theta_seed`: Initial global expansion point(s) \(\theta_0\).
     *   Numeric vector `c(tau, sigma, rho)` (e.g., `c(6,1,0.35)`).
     *   Character string `"atlas"`: Use pre-defined \(\theta_0\) values for broad anatomical ROIs (e.g., visual, motor, PFC from Harvard-Oxford or similar, requires atlas mapping functionality).
@@ -117,14 +117,14 @@ The method fits the 3-parameter Lag-Width-Undershoot (LWU) HRF model voxel-wise 
 
 This refined proposal is now highly detailed, incorporates adaptive strategies for handling HRF heterogeneity, includes robust uncertainty quantification, and maintains the core computational efficiency of the linear Taylor approximation. It's well-poised for implementation.
 
-Okay, here's a granular, ticketed sprint plan for implementing `fmrireg::fit_hrf_lwu` based on the latest detailed proposal. This breaks down the work into manageable pieces, suitable for focused development sprints.
+Okay, here's a granular, ticketed sprint plan for implementing `fmridesign::fit_hrf_lwu` based on the latest detailed proposal. This breaks down the work into manageable pieces, suitable for focused development sprints.
 
 ---
 
-**`fmrireg::fit_hrf_lwu` Implementation Sprints & Tickets**
+**`fmridesign::fit_hrf_lwu` Implementation Sprints & Tickets**
 
 **Assumptions:**
-*   `fmrireg::hrf_lwu()` and `fmrireg::hrf_basis_lwu()` (as defined in the previous proposal with `normalise` and `normalise_primary` arguments) are already implemented and unit-tested in `fmrireg`.
+*   `fmridesign::hrf_lwu()` and `fmridesign::hrf_basis_lwu()` (as defined in the previous proposal with `normalise` and `normalise_primary` arguments) are already implemented and unit-tested in `fmrireg`.
 *   Basic `neuroim2` functionality for reading/writing NIfTI and handling `NeuroVec`/`NeuroVol` is stable.
 *   Dependencies like `Matrix`, `RcppArmadillo`, `robustbase` are available.
 

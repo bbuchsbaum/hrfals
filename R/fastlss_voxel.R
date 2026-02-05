@@ -76,7 +76,7 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
   }
 
   if (progress)
-    pb <- txtProgressBar(min = 0, max = v, style = 3)
+    pb <- utils::txtProgressBar(min = 0, max = v, style = 3)
 
   for (vx in seq_len(v)) {
     h_v <- H_allvoxels[, vx]
@@ -114,7 +114,7 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
       }
       B[, vx] <- res_col
     }
-    if (progress) setTxtProgressBar(pb, vx)
+    if (progress) utils::setTxtProgressBar(pb, vx)
   }
   if (progress) close(pb)
   dimnames(B) <- list(trial_names, colnames(Y))
@@ -124,4 +124,3 @@ lss_mode_b <- function(Y, A, X_onset_list, H_allvoxels, p_vec,
 #' @rdname lss_mode_b
 #' @export
 fastlss_voxel <- lss_mode_b
-

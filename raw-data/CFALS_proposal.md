@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Goal:** Integrate the CF-ALS (Confound-Free Alternating Least Squares) rank-1 HRF estimation method into the `fmrireg` R package to provide users with a fast, accurate, and robust alternative for data-driven HRF estimation.
+**Goal:** Integrate the CF-ALS (Confound-Adjusted Alternating Least Squares) rank-1 HRF estimation method into the `fmrireg` R package to provide users with a fast, accurate, and robust alternative for data-driven HRF estimation.
 
 ## Algorithm Core: CF-ALS Method
 

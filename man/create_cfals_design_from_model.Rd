@@ -2,7 +2,7 @@
 % Please edit documentation in R/cfals_design_utils_hrfals.R
 \name{create_cfals_design_from_model}
 \alias{create_cfals_design_from_model}
-\title{Create CFALS Design from fmrireg Model}
+\title{Create CFALS Design from fmridesign Model}
 \usage{
 create_cfals_design_from_model(...)
 }

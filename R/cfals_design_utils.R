@@ -1,7 +1,7 @@
 #' CFALS Design Utilities
 #'
 #' Helper functions for interfacing the CF-ALS engine with the
-#' fmrireg HRF basis system.
+#' fmridesign HRF basis system.
 #'
 #' @name cfals_design_utils
 NULL
@@ -31,44 +31,6 @@ reconstruction_matrix.HRF <- function(hrf, sframe) {
 }
 
 
-
-#' Convolve a timeseries with a single HRF basis function
-#'
-#' Utility helper that extracts one basis function from an `HRF` object and
-#' performs discrete convolution with a raw timeseries.  The result has the
-#' same length as the input series and is truncated to the sampling frame.
-#'
-#' @param ts Numeric vector of raw onset values.
-#' @param hrf_basis An object of class `HRF` providing the basis set.
-#' @param basis_index Integer index of the basis function to use.
-#' @param sframe A `sampling_frame` object describing the temporal grid.
-#' @return Numeric vector of convolved values.
-#' @keywords internal
-convolve_timeseries_with_single_basis <- function(ts, hrf_basis,
-                                                  basis_index = 1, sframe) {
-  if (!is.numeric(ts)) {
-    stop("'ts' must be numeric")
-  }
-  if (!inherits(hrf_basis, "HRF")) {
-    stop("'hrf_basis' must be an object of class 'HRF'")
-  }
-  nb <- fmrihrf::nbasis(hrf_basis)
-  if (basis_index < 1 || basis_index > nb) {
-    stop("'basis_index' out of range")
-  }
-
-  grid <- if (inherits(sframe, "sampling_frame")) {
-    seq(0, attr(hrf_basis, "span"), by = sframe$TR[1])
-  } else {
-    as.numeric(sframe)
-  }
-  vals <- fmrihrf::evaluate(hrf_basis, grid)
-  if (is.vector(vals)) vals <- matrix(vals, ncol = 1L)
-  phi_j <- vals[, basis_index]
-
-  conv_full <- stats::convolve(ts, rev(phi_j), type = "open")
-  conv_full[seq_along(ts)]
-}
 
 #' Project design and data matrices to the null space of confounds
 #'
@@ -120,14 +82,28 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   sframe <- event_model$sampling_frame
-  d <- fmrihrf::nbasis(hrf_basis)
+  # Get the number of basis functions based on the HRF object type
+  d <- if (inherits(hrf_basis, "HRF")) {
+    # For HRF objects from fmrihrf package
+    fmrihrf::nbasis(hrf_basis)
+  } else {
+    stop("Unsupported HRF basis type")
+  }
   
   # Use the existing design matrix from the event model
   # The issue is that the event model was created with a default HRF basis
   # We need to reconstruct with the desired basis
   
   # Extract event information and rebuild the design with the correct basis
-  sample_times <- fmrireg::samples(sframe, global = TRUE)
+  sample_times <- fmridesign::samples(sframe, global = TRUE)
+  if (!is.numeric(sample_times) || length(sample_times) < 1 || any(!is.finite(sample_times))) {
+    stop("Invalid sampling_frame: sample times must be a non-empty finite numeric vector")
+  }
+  if (is.unsorted(sample_times)) {
+    stop("Invalid sampling_frame: sample times must be sorted in increasing order")
+  }
+  onset_min <- min(sample_times)
+  onset_max <- max(sample_times)
   X_list <- list()
   
   # Get the event terms from the model
@@ -141,7 +117,12 @@ create_fmri_design <- function(event_model, hrf_basis) {
       
       # Get the conditions for this term from the event_table
       if (var_name %in% names(term$event_table)) {
-        conditions <- levels(term$event_table[[var_name]])
+        cond_col <- term$event_table[[var_name]]
+        conditions <- if (is.factor(cond_col)) {
+          levels(droplevels(cond_col))
+        } else {
+          unique(as.character(cond_col))
+        }
         
         # For each condition, create a design matrix with d columns (one per basis function)
         for (cond in conditions) {
@@ -152,18 +133,30 @@ create_fmri_design <- function(event_model, hrf_basis) {
           # Create design matrix for this condition with d columns
           X_cond <- matrix(0, length(sample_times), d)
           
-          # For each basis function
-          for (j in seq_len(d)) {
-            # Create a timeseries with impulses at event onsets
-            ts <- rep(0, length(sample_times))
-            for (onset in cond_onsets) {
-              onset_idx <- which.min(abs(sample_times - onset))
-              if (onset_idx <= length(ts)) {
-                ts[onset_idx] <- 1
-              }
+          # Create a timeseries with impulses at event onsets (shared across basis functions)
+          ts <- numeric(length(sample_times))
+          dropped_outside <- 0L
+          dropped_nonfinite <- 0L
+          for (onset in cond_onsets) {
+            if (!is.finite(onset)) {
+              dropped_nonfinite <- dropped_nonfinite + 1L
+              next
             }
-            
-            # Convolve with the j-th basis function
+            if (onset < onset_min || onset > onset_max) {
+              dropped_outside <- dropped_outside + 1L
+              next
+            }
+            onset_idx <- which.min(abs(sample_times - onset))
+            ts[onset_idx] <- ts[onset_idx] + 1
+          }
+          if (dropped_outside > 0L || dropped_nonfinite > 0L) {
+            warning(sprintf(
+              "Dropped %d out-of-range and %d non-finite onsets for term '%s', condition '%s'.",
+              dropped_outside, dropped_nonfinite, var_name, cond
+            ), call. = FALSE)
+          }
+
+          for (j in seq_len(d)) {
             X_cond[, j] <- convolve_timeseries_with_single_basis(ts, hrf_basis, j, sframe)
           }
           
@@ -183,7 +176,7 @@ create_fmri_design <- function(event_model, hrf_basis) {
   }
 
   list(X_list = X_list,
-       d = fmrihrf::nbasis(hrf_basis),
+       d = d,
        k = length(X_list),
        Phi = Phi,
        h_ref_shape_norm = h_ref)
