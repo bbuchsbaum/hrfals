@@ -1,71 +1,168 @@
 ---
-title: "Estimating Shared HRFs with Many Continuous Predictors"
+title: "Sparse CF-ALS with many continuous predictors"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Estimating Shared HRFs with Many Continuous Predictors}
+  %\VignetteIndexEntry{Sparse CF-ALS with many continuous predictors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+params:
+  family: red
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
 ---
 
 ```{r setup, include=FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) ggplot2::theme_set(albersdown::theme_albers(params$family))
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(42)
 ```
 
-This vignette demonstrates the sparse CF-ALS implementation for scenarios
-with a large number of continuous predictors.  The helper function
-`hrfals_sparse()` provides sensible defaults for these use cases.
+## The problem
 
-## Simulated example
+Experimental designs sometimes produce many continuous predictors --- for
+example, parametric modulations from a large stimulus set, model-derived
+regressors from reinforcement learning, or one-per-item regressors in a
+memory study.
+With dozens or hundreds of predictors and a shared HRF, the beta vector
+becomes high-dimensional and poorly constrained by ordinary least squares.
 
-The code below simulates a small data set with many predictors and then
-fits the model using `hrfals_sparse()`.  The same workflow applies when
-using real fMRI data and a design created with `fmridesign::event_model()`.
+`hrfals_sparse()` solves this by coupling CF-ALS HRF estimation with an
+elastic-net penalty on the condition amplitudes.
+Only predictors that carry real signal survive the L1 shrinkage, while
+the HRF shape is still estimated from the data.
 
-```{r eval=FALSE}
+## Simulated design
+
+We create a scenario with 30 conditions, only 5 of which carry signal.
+Each condition has 2 trials in a 200-second run.
+
+```{r}
 library(hrfals)
 library(fmridesign)
 
-n  <- 60   # time points
-k  <- 100  # number of continuous predictors
-h_len <- 5 # length of FIR basis
+TR <- 1
+n_time <- 200
+sf <- sampling_frame(blocklens = n_time, TR = TR)
 
-# simulate predictors
-X_list <- lapply(seq_len(k), function(i) matrix(rnorm(n * h_len), n, h_len))
+n_conditions <- 30
+cond_names <- paste0("cond", seq_len(n_conditions))
 
-# sparse beta pattern
-beta_true <- c(rep(1, 5), rep(0, k - 5))
+# Space onsets across the run
+pool <- seq(4, n_time - 10, by = 3)
+onsets_all <- sort(sample(pool, size = n_conditions * 2, replace = FALSE))
 
-# true HRF coefficients
-h_true <- rnorm(h_len)
-
-# generate BOLD signal
-Y <- matrix(0, n, 1)
-for (i in seq_len(k)) {
-  Y <- Y + (X_list[[i]] %*% h_true) * beta_true[i]
-}
-Y <- Y + matrix(rnorm(n, sd = 0.1), n, 1)
-
-# fit using sparse CF-ALS
-fit <- cf_als_engine(
-  X_list, Y,
-  lambda_b = 0.1,
-  lambda_h = 0.1,
-  lambda_init = 0.1,
-  R_mat_eff = diag(h_len),
-  fullXtX_flag = FALSE,
-  precompute_xty_flag = TRUE,
-  Phi_recon_matrix = diag(h_len),
-  h_ref_shape_canonical = rep(1, h_len),
-  max_alt = 2,
-  beta_penalty = list(l1 = 0.05, alpha = 1, warm_start = TRUE),
-  design_control = list(standardize_predictors = TRUE,
-                        cache_design_blocks = TRUE)
+events <- data.frame(
+  onset = onsets_all,
+  condition = factor(rep(cond_names, each = 2), levels = cond_names),
+  block = 1
 )
 
-plot(fit)
+emod <- event_model(
+  onset ~ hrf(condition),
+  data = events,
+  block = ~ block,
+  sampling_frame = sf
+)
+
+hrf_basis <- fmrihrf::HRF_SPMG3
 ```
 
-The estimated HRF and sparse beta weights can be inspected from the
-returned `fit` object.  When working with real fMRI data you would
-construct `X_list` via `create_cfals_design()` which supports
-splitting a single `Ident` term into multiple predictor blocks.
+## Generate ground-truth BOLD data
+
+Only the first 5 conditions have non-zero amplitude. The remaining 25 are
+pure noise.
+
+```{r}
+h_true <- c(1.2, 0.5, -0.2)
+beta_true <- c(rep(1, 5), rep(0, n_conditions - 5))
+
+design <- create_fmri_design(emod, hrf_basis)
+
+Y <- matrix(0, n_time, 10)
+for (j in seq_along(design$X_list)) {
+  sig_j <- drop(design$X_list[[j]] %*% h_true) * beta_true[j]
+  Y <- Y + sig_j
+}
+Y <- Y + matrix(rnorm(n_time * 10, sd = 0.3), n_time, 10)
+```
+
+## Fit with `hrfals_sparse()`
+
+The default L1 penalty (`l1 = 0.05`) encourages sparsity in the beta
+vector. You can adjust this via the `beta_penalty` argument.
+
+```{r}
+fit <- hrfals_sparse(
+  fmri_data_obj = Y,
+  event_model   = emod,
+  hrf_basis     = hrf_basis,
+  lam_beta      = 1,
+  lam_h         = 1,
+  max_alt       = 1
+)
+
+fit
+```
+
+## Checking sparsity recovery
+
+Average the absolute beta across voxels and compare the first 5 (signal)
+vs. the remaining 25 (noise) conditions.
+
+```{r}
+beta_mean <- rowMeans(abs(fit$beta_amps))
+names(beta_mean) <- cond_names
+
+signal_mean <- mean(beta_mean[1:5])
+noise_mean  <- mean(beta_mean[6:30])
+cat("Mean |beta| for signal conditions:", round(signal_mean, 3), "\n")
+cat("Mean |beta| for noise  conditions:", round(noise_mean, 3), "\n")
+```
+
+The signal conditions should have substantially larger amplitudes than the
+noise conditions, confirming that the L1 penalty is doing its job.
+
+## Tuning the L1 penalty
+
+When you are unsure about the right penalty strength,
+`tune_beta_l1_hrfals()` runs a lightweight grid search with
+train/test voxel splits:
+
+```{r}
+tune_res <- tune_beta_l1_hrfals(
+  fmri_data_obj_subset = Y,
+  event_model          = emod,
+  hrf_basis            = hrf_basis,
+  l1_grid              = c(0.01, 0.05, 0.1, 0.2),
+  other_hrfals_args    = list(lam_beta = 1, lam_h = 1),
+  n_outer_iterations_cfals = 1
+)
+
+tune_res
+attr(tune_res, "best_l1")
+```
+
+You can then refit the full model using the selected penalty:
+
+```{r eval=FALSE}
+fit_tuned <- hrfals_sparse(
+  Y, emod, hrf_basis,
+  beta_penalty = list(l1 = attr(tune_res, "best_l1"),
+                      alpha = 1, warm_start = TRUE)
+)
+```
+
+## Next steps
+
+- `vignette("tuning_sparse_penalty")` --- a more detailed look at the
+  tuning workflow.
+- `vignette("trialwise_beta_series")` --- trial-wise betas after CF-ALS
+  fitting.
+- `?hrfals_sparse`, `?tune_beta_l1_hrfals` --- function reference.

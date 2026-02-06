@@ -1,28 +1,41 @@
 ---
-title: "Tuning Sparse Betas in CF-ALS"
+title: "Tuning sparse betas in CF-ALS"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Tuning Sparse Betas in CF-ALS}
+  %\VignetteIndexEntry{Tuning sparse betas in CF-ALS}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+params:
+  family: red
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
 ---
 
 ```{r setup, include=FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) ggplot2::theme_set(albersdown::theme_albers(params$family))
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 set.seed(123)
 ```
 
-When many predictors compete for limited variance it is helpful to
-encourage sparse condition amplitudes.  `hrfals()` supports elastic-net
-penalties through the `beta_penalty` argument, and the helper
+## When do you need L1 tuning?
+
+When many predictors compete for limited variance, an L1 (lasso) penalty
+on the condition amplitudes drives irrelevant betas toward zero.
+But too little penalty leaves noise in; too much suppresses real signal.
 `tune_beta_l1_hrfals()` provides a lightweight grid search to pick a
-reasonable L1 strength.  This vignette walks through a compact example.
+reasonable penalty strength before running the full model.
+
+This vignette walks through a compact example: 10 conditions, only 3 with
+signal.
 
 ## Simulate a sparse design
-
-We construct an event model with ten conditions but only three of them
-carry signal.  The remaining conditions should shrink toward zero when a
-suitable penalty is used.
 
 ```{r}
 library(hrfals)
@@ -35,13 +48,13 @@ sf <- sampling_frame(blocklens = n_time, TR = TR)
 n_conditions <- 10
 cond_names <- paste0("cond", seq_len(n_conditions))
 
-set.seed(1)
 pool <- seq(4, n_time - 10, by = 2)
 onsets_all <- sort(sample(pool, size = n_conditions * 3, replace = FALSE))
+
 events <- data.frame(
-  onset = onsets_all,
+  onset     = onsets_all,
   condition = factor(rep(cond_names, each = 3), levels = cond_names),
-  block = 1
+  block     = 1
 )
 
 emod <- event_model(
@@ -51,45 +64,86 @@ emod <- event_model(
   sampling_frame = sf
 )
 
-hrf_basis <- fmrihrf::HRF_FIR  # default 12-column FIR basis
+hrf_basis <- fmrihrf::HRF_FIR
+```
 
-# ground-truth HRF basis coefficients and sparse beta vector
-h_coeffs <- c(1.2, 0.8, 0.2, rep(0, fmrihrf::nbasis(hrf_basis) - 3))
-beta_true <- c(rep(1, 3), rep(0, n_conditions - 3))
+## Generate ground-truth data
 
-# obtain design blocks for simulation
+The first three conditions carry signal; the remaining seven are noise.
+
+```{r}
+h_coeffs   <- c(1.2, 0.8, 0.2, rep(0, fmrihrf::nbasis(hrf_basis) - 3))
+beta_true  <- c(rep(1, 3), rep(0, n_conditions - 3))
+
 cf_design <- create_fmri_design(emod, hrf_basis)
-X_list <- cf_design$X_list
+X_list    <- cf_design$X_list
 
 Y <- matrix(0, n_time, 20)
 for (j in seq_along(X_list)) {
-  signal_j <- drop(X_list[[j]] %*% h_coeffs) * beta_true[j]
-  Y <- Y + signal_j
+  Y <- Y + drop(X_list[[j]] %*% h_coeffs) * beta_true[j]
 }
 Y <- Y + matrix(rnorm(n_time * 20, sd = 0.25), n_time, 20)
 ```
 
 ## Run the penalty grid search
 
-We try a small set of L1 penalty strengths while keeping the ridge
-penalty fixed.  The helper splits voxels into train/test subsets and
-returns the mean-squared error for each setting.
+`tune_beta_l1_hrfals()` tries each L1 penalty on a train/test voxel
+split and returns the mean-squared error for each setting.
 
 ```{r}
 tune_res <- tune_beta_l1_hrfals(
-  fmri_data_obj_subset = Y,
-  event_model = emod,
-  hrf_basis = hrf_basis,
-  l1_grid = c(1e-3, 5e-3, 1e-2, 5e-2),
-  other_hrfals_args = list(lam_beta = 0.05, lam_h = 0.05),
+  fmri_data_obj_subset     = Y,
+  event_model              = emod,
+  hrf_basis                = hrf_basis,
+  l1_grid                  = c(1e-3, 5e-3, 1e-2, 5e-2),
+  other_hrfals_args        = list(lam_beta = 0.05, lam_h = 0.05),
   n_outer_iterations_cfals = 1
 )
 
 tune_res
+```
+
+The best penalty is stored as an attribute:
+
+```{r}
 attr(tune_res, "best_l1")
 ```
 
-With a selected penalty it is straightforward to rerun `hrfals()` on the
-full data using `beta_penalty = list(l1 = attr(tune_res, "best_l1"))`.
-The grid search is intentionally simple—feel free to extend it with more
-voxels or outer iterations when applying the package to real data.
+## Refit with the selected penalty
+
+With the selected L1 strength in hand, rerun `hrfals()` on the full
+dataset:
+
+```{r}
+best_l1 <- attr(tune_res, "best_l1")
+
+fit <- hrfals(
+  fmri_data_obj = Y,
+  event_model   = emod,
+  hrf_basis     = hrf_basis,
+  lam_beta      = 0.05,
+  lam_h         = 0.05,
+  max_alt       = 1,
+  beta_penalty  = list(l1 = best_l1, alpha = 1, warm_start = TRUE)
+)
+
+fit
+```
+
+## Practical tips
+
+- **Grid resolution.** The search above is intentionally simple. For real
+  data, try a wider range (e.g. `10^seq(-4, 0, length.out = 10)`) and more
+  voxels.
+- **Outer iterations.** Increasing `n_outer_iterations_cfals` lets the HRF
+  re-adapt to each penalty level, at the cost of longer runtime.
+- **Elastic net mixing.** The default `alpha = 1` gives a pure lasso.
+  Setting `alpha < 1` blends in ridge regularization, which can help when
+  conditions are correlated.
+
+## Next steps
+
+- `vignette("many_continuous_predictors")` --- full sparse CF-ALS workflow
+  with many predictors.
+- `vignette("hrfals")` --- getting started guide.
+- `?tune_beta_l1_hrfals`, `?hrfals_sparse` --- function reference.

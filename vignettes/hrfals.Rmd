@@ -1,0 +1,162 @@
+---
+title: "Getting started with hrfals"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with hrfals}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include=FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE)) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+set.seed(123)
+```
+
+## Why hrfals?
+
+Standard fMRI analysis assumes a fixed hemodynamic response function (HRF)
+--- typically the SPM canonical shape.
+When the true HRF deviates from that template, condition amplitudes can be
+biased and statistical power drops.
+Estimating the HRF from the data itself avoids this problem, but naive
+approaches confound the HRF shape with nuisance signals (scanner drift,
+motion, physiological noise).
+
+`hrfals` solves both problems at once.
+It projects out confounds **before** estimation and then alternates between
+updating HRF shape and condition amplitudes with ridge regularization
+--- a procedure called Confound-Adjusted Alternating Least Squares (CF-ALS).
+The result is a data-driven HRF paired with robust condition betas, ready
+for downstream analysis.
+
+## Quick example
+
+Four events, two conditions, simulated BOLD data --- fitted in a single call:
+
+```{r message=FALSE}
+library(hrfals)
+library(fmridesign)
+
+# Sampling frame and events
+TR <- 1
+n_time <- 80
+sf <- sampling_frame(blocklens = n_time, TR = TR)
+
+events <- data.frame(
+  onset = c(5, 20, 40, 60),
+  condition = factor(c("A", "A", "B", "B")),
+  block = 1
+)
+
+# Event model (fmridesign) + HRF basis (fmrihrf)
+emod <- event_model(onset ~ hrf(condition), data = events,
+                    block = ~ block, sampling_frame = sf)
+hrf_basis <- fmrihrf::HRF_SPMG3
+
+# Simulated BOLD matrix (time x voxels)
+Y <- matrix(rnorm(n_time * 5, sd = 0.2), n_time, 5)
+
+# Fit CF-ALS
+fit <- hrfals(Y, emod, hrf_basis,
+              lam_beta = 10, lam_h = 1, max_alt = 1)
+fit
+```
+
+The returned `hrfals_fit` object stores HRF coefficients (`h_coeffs`),
+condition amplitudes (`beta_amps`), a reconstructed HRF curve
+(`recon_hrf`), and per-voxel R-squared (`gof`).
+
+## Inspecting the fit
+
+```{r}
+str(list(
+  h_dim    = dim(fit$h_coeffs),
+  beta_dim = dim(fit$beta_amps),
+  gof      = summary(as.numeric(fit$gof))
+))
+```
+
+`autoplot()` gives a quick visual summary when `ggplot2` is loaded:
+
+```{r fig.width=6, fig.height=3, fig.alt="Reconstructed HRF from CF-ALS fit"}
+library(ggplot2)
+autoplot(fit)
+```
+
+## Sparse betas with `hrfals_sparse()`
+
+When many conditions or continuous predictors compete for limited variance,
+encourage sparsity with an L1 penalty.
+`hrfals_sparse()` is a convenience wrapper that turns on elastic-net
+regularization:
+
+```{r}
+fit_sparse <- hrfals_sparse(Y, emod, hrf_basis, max_alt = 1)
+str(dim(fit_sparse$beta_amps))
+```
+
+## Choosing a method
+
+`hrfals()` offers three estimation engines via the `method` argument:
+
+| Method | When to use |
+|---|---|
+| `"cf_als"` (default) | General purpose. Full alternating least squares with cross-condition terms. |
+| `"ls_svd_1als"` | One ALS refinement after a fast LS+SVD initialization. Good balance of speed and accuracy. |
+| `"ls_svd_only"` | Fastest. Pure LS+SVD with no alternation. Use when you have many conditions or voxels and need a quick baseline. |
+
+```{r eval=FALSE}
+fit_svd <- hrfals(Y, emod, hrf_basis, method = "ls_svd_only")
+fit_als <- hrfals(Y, emod, hrf_basis, method = "ls_svd_1als",
+                  fullXtX = "auto", lam_beta = 1, lam_h = 1)
+```
+
+## Key tuning knobs
+
+- **`lam_beta` / `lam_h`**: Ridge penalties for the beta and HRF update
+  steps. Start with moderate values (e.g. `lam_beta = 10`, `lam_h = 1`) and
+  tune from there.
+- **`max_alt`**: Number of alternating updates. Start with 1. More
+  alternations help when regressors overlap and `fullXtX = TRUE`, but can
+  hurt when cross-terms are omitted.
+- **`fullXtX`**: Controls whether the h-update includes cross-condition
+  Gramian terms. Leave at `"auto"` unless you have a specific reason to
+  force `TRUE` or `FALSE`.
+- **HRF basis**: FIR bases (`fmrihrf::HRF_FIR`) give maximum flexibility;
+  canonical bases (`fmrihrf::HRF_SPMG3`) are more stable with fewer
+  parameters.
+
+## Tips for real data
+
+- Pass a confound matrix (motion parameters, drift, etc.) via
+  `confound_obj` and optionally a baseline model via `baseline_model`.
+  CF-ALS projects these out before estimation.
+- For trial-wise beta series (connectivity, MVPA), fit the shared HRF first
+  with `hrfals()`, then pass the result to `hrfals_lss()`.
+- For advanced control --- targeting a specific event term, spatial
+  regularization, or custom penalty matrices --- use `estimate_hrf_cfals()`
+  directly.
+
+## Next steps
+
+- `vignette("design_and_confounds")` --- how confound projection works
+  under the hood.
+- `vignette("trialwise_beta_series")` --- derive trial-wise betas after
+  CF-ALS fitting.
+- `vignette("tuning_sparse_penalty")` --- tune L1 penalties for large
+  predictor sets.
+- `vignette("many_continuous_predictors")` --- sparse CF-ALS with many
+  continuous regressors.
+- `?hrfals`, `?hrfals_sparse`, `?estimate_hrf_cfals` --- function reference.
